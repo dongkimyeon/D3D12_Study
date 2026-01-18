@@ -1,13 +1,13 @@
 #pragma once
-#include "CommonInclude.h"
+#include <windows.h>
+#include <string>
+#include <cstdio>
 
-  
 class Time
 {
 public:
     static void Initialize();
     static void Update();
-    static void Render(HDC hdc);
     static void SetTimeStop(bool a);
     static float DeltaTime();
 

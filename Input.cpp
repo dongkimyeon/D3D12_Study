@@ -1,8 +1,10 @@
 #include "Input.h"
 
 std::vector<Input::Key> Input::Keys = {};
-Vector2 Input::mMousePosition = Vector2::One;
 std::wstring Input::mInputText;
+
+
+static bool lastF1State = false;
 
 int ASCII[(UINT)eKeyCode::End] =
 {
@@ -11,6 +13,7 @@ int ASCII[(UINT)eKeyCode::End] =
     'Z', 'X', 'C', 'V', 'B', 'N', 'M',
     VK_LEFT, VK_RIGHT, VK_DOWN, VK_UP,
     VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, VK_SPACE, VK_ESCAPE, VK_BACK,
+    VK_SHIFT, VK_F1
 };
 
 void Input::ProcessChar(WPARAM wParam)
@@ -22,7 +25,7 @@ void Input::ProcessChar(WPARAM wParam)
             mInputText.pop_back();
         }
     }
-    else if (wParam >= 32 && wParam <= 126 && mInputText.length() < 20) // 아스키 문자 범위
+    else if (wParam >= 32 && wParam <= 126 && mInputText.length() < 20) 
     {
         mInputText += static_cast<wchar_t>(wParam);
     }
@@ -70,7 +73,7 @@ void Input::updateKey(Input::Key& key)
         else
             updateKeyUp(key);
 
-        getMousePositionByWindow();
+
     }
     else
     {
@@ -103,31 +106,7 @@ void Input::updateKeyUp(Input::Key& key)
     key.bPressed = false;
 }
 
-void Input::getMousePositionByWindow()
-{
-    POINT mousePos = {};
-    if (!GetCursorPos(&mousePos))
-    {
-        OutputDebugStringW(L"Error: GetCursorPos failed\n");
-        return;
-    }
 
-    HWND hWnd = GAME.GetHwnd();
-    if (hWnd == nullptr)
-    {
-        OutputDebugStringW(L"Error: HWND is nullptr\n");
-        return;
-    }
-
-    if (!ScreenToClient(hWnd, &mousePos))
-    {
-        OutputDebugStringW(L"Error: ScreenToClient failed\n");
-        return;
-    }
-
-    mMousePosition.x = static_cast<float>(mousePos.x);
-    mMousePosition.y = static_cast<float>(mousePos.y);
-}
 
 void Input::clearKeys()
 {
