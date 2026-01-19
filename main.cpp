@@ -28,30 +28,66 @@ static bool global_windowDidResize = false;
 
 // 스왑 체인에 사용할 버퍼 개수. 보통 더블 버퍼링(2)이나 트리플 버퍼링(3)을 사용함.
 const UINT FRAME_BUFFER_COUNT = 2;
-
+const UINT MAX_RECT_COUNT = 100; // 최대 사각형 개수 제한 (버퍼 오버플로우 방지)
 
 // 사각형의 상태를 관리하는 구조체
-struct RectObject {
-    float x, y;          // 위치 (NDC 좌표: -1.0 ~ 1.0)
-    float width, height; // 크기
-    float vx, vy;        // 속도
-    float r, g, b, a;    // 색상
+class Rect {
+public:
+    struct Vertex {
+        float x, y;
+        float r, g, b, a;
+    };
 
-    // 화면 경계 충돌 검사 및 이동
+private:
+    float x, y;
+    float width, height;
+    float vx, vy;
+    float r, g, b, a;
+
+public:
+    // 1. Initialize: 랜덤 값으로 초기화
+    void Initialize(std::mt19937& rng) {
+        std::uniform_real_distribution<float> distPos(-0.7f, 0.7f);
+        std::uniform_real_distribution<float> distVel(-0.5f, 0.5f);
+        std::uniform_real_distribution<float> distCol(0.4f, 1.0f);
+
+        x = distPos(rng);
+        y = distPos(rng);
+        width = 0.2f;
+        height = 0.2f;
+        vx = distVel(rng);
+        vy = distVel(rng);
+        r = distCol(rng);
+        g = distCol(rng);
+        b = distCol(rng);
+        a = 1.0f;
+    }
+
+    // 2. Update: 물리 및 충돌 로직
     void Update(float dt) {
         x += vx * dt;
         y += vy * dt;
 
-        // X축 바운스 (NDC 기준 -1 ~ 1)
         if (x - width / 2 < -1.0f || x + width / 2 > 1.0f) {
             vx *= -1.0f;
-            x = (x < 0) ? -1.0f + width / 2 : 1.0f - width / 2; // 끼임 방지
+            x = (x < 0) ? -1.0f + width / 2 : 1.0f - width / 2;
         }
-        // Y축 바운스
         if (y - height / 2 < -1.0f || y + height / 2 > 1.0f) {
             vy *= -1.0f;
             y = (y < 0) ? -1.0f + height / 2 : 1.0f - height / 2;
         }
+    }
+
+    // 3. Render: 정점 데이터를 버퍼 리스트에 채움 (Batching 준비)
+    void Render(std::vector<Vertex>& vertexData) const {
+        float hw = width / 2.0f;
+        float hh = height / 2.0f;
+
+        // 좌상, 우상, 우하, 좌하 순서 (Index Buffer와 매칭)
+        vertexData.push_back({ x - hw, y + hh, r, g, b, a });
+        vertexData.push_back({ x + hw, y + hh, r, g, b, a });
+        vertexData.push_back({ x + hw, y - hh, r, g, b, a });
+        vertexData.push_back({ x - hw, y - hh, r, g, b, a });
     }
 };
 
@@ -290,143 +326,91 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     }
 
 
-    // 15. 여러 개의 사각형 생성 및 버퍼 초기화
-    const int RECT_COUNT = 10; // 생성할 사각형 개수
-    std::vector<RectObject> rects;
-
-    // 랜덤 장치 설정
+    // 15. Rect 객체 관리 및 버퍼 생성
+    std::vector<Rect> rects;
     std::mt19937 rng(1337);
-    std::uniform_real_distribution<float> distPos(-0.7f, 0.7f);
-    std::uniform_real_distribution<float> distVel(-0.5f, 0.5f);
-    std::uniform_real_distribution<float> distCol(0.4f, 1.0f);
 
-    for (int i = 0; i < RECT_COUNT; ++i) {
-        rects.push_back({
-            distPos(rng), distPos(rng),  // 초기 위치
-            0.2f, 0.2f,                  // 크기
-            distVel(rng), distVel(rng),  // 초기 속도
-            distCol(rng), distCol(rng), distCol(rng), 1.0f // 색상
-            });
+    for (int i = 0; i < 5; ++i) {
+        Rect r;
+        r.Initialize(rng);
+        rects.push_back(r);
     }
 
-    // 버퍼 크기 계산 (사각형 하나당 정점 4개, 인덱스 6개)
-    UINT vertexBufferSize = RECT_COUNT * 4 * (sizeof(float) * 6);
-    UINT indexBufferSize = RECT_COUNT * 6 * sizeof(uint16_t);
+    // 최대 개수에 맞춰 버퍼 크기 미리 할당
+    UINT maxVertexBufferSize = MAX_RECT_COUNT * 4 * sizeof(Rect::Vertex);
+    UINT maxIndexBufferSize = MAX_RECT_COUNT * 6 * sizeof(uint16_t);
 
-    // [버텍스 버퍼 생성 - 기존 코드와 유사하나 크기만 확장]
     ID3D12Resource* vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW vbView;
     {
         D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vertexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxVertexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
         d3d12Device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(ID3D12Resource), (void**)&vertexBuffer);
 
         vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-        vbView.StrideInBytes = sizeof(float) * 6;
-        vbView.SizeInBytes = vertexBufferSize;
+        vbView.StrideInBytes = sizeof(Rect::Vertex);
+        vbView.SizeInBytes = maxVertexBufferSize;
     }
 
-    // [인덱스 버퍼 생성 및 고정 데이터 기록]
     ID3D12Resource* indexBuffer;
     D3D12_INDEX_BUFFER_VIEW ibView;
     {
         D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, indexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
         d3d12Device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(ID3D12Resource), (void**)&indexBuffer);
 
-        // 인덱스는 변하지 않으므로 미리 채워둠
+        // 인덱스는 최대치까지 미리 채워둠
         std::vector<uint16_t> indices;
-        for (int i = 0; i < RECT_COUNT; ++i) {
-            uint16_t base = i * 4;
+        for (UINT i = 0; i < MAX_RECT_COUNT; ++i) {
+            uint16_t base = (uint16_t)(i * 4);
             indices.push_back(base + 0); indices.push_back(base + 1); indices.push_back(base + 2);
             indices.push_back(base + 0); indices.push_back(base + 2); indices.push_back(base + 3);
         }
         void* iData;
         indexBuffer->Map(0, nullptr, &iData);
-        memcpy(iData, indices.data(), indexBufferSize);
+        memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));
         indexBuffer->Unmap(0, nullptr);
 
         ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
         ibView.Format = DXGI_FORMAT_R16_UINT;
-        ibView.SizeInBytes = indexBufferSize;
+        ibView.SizeInBytes = maxIndexBufferSize;
     }
-
  
     // 16. 메인 렌더 루프
 
     MSG msg = {};
     while (msg.message != WM_QUIT)
     {
-        // 16-1. 윈도우 메시지 처리
         if (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
             continue;
         }
 
-        // 시스템 상태 업데이트 (입력 및 시간)
-        Input::Update();
         Time::Update();
+        Input::Update();
         float dt = Time::GetDeltaTime();
 
-        // 16-2. 창 크기가 변경되었을 때 처리 (리소스 재생성)
-        if (global_windowDidResize) {
-            // GPU 작업 완료 대기
-            UINT64 waitValue = ++fenceValue;
-            commandQueue->Signal(fence, waitValue);
-            if (fence->GetCompletedValue() < waitValue) {
-                fence->SetEventOnCompletion(waitValue, fenceEvent);
-                WaitForSingleObject(fenceEvent, INFINITE);
-            }
-
-            // 기존 백버퍼 해제 및 스왑체인 크기 조절
-            for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) frameBuffers[i]->Release();
-
-            RECT rect;
-            GetClientRect(hwnd, &rect);
-            swapChain->ResizeBuffers(FRAME_BUFFER_COUNT, rect.right, rect.bottom, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
-
-            // RTV 재생성
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-            for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) {
-                swapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&frameBuffers[i]);
-                d3d12Device->CreateRenderTargetView(frameBuffers[i], nullptr, rtvHandle);
-                rtvHandle.ptr += rtvDescriptorSize;
-            }
-
-            global_windowDidResize = false;
-            continue;
+        // [입력 처리] Q를 누르면 사각형 추가
+        if (Input::GetKeyDown(eKeyCode::Q) && rects.size() < MAX_RECT_COUNT) {
+            Rect r;
+            r.Initialize(rng);
+            rects.push_back(r);
         }
 
-        
-        // [단계 1] 물리 시뮬레이션 (CPU)
-   
-        for (auto& r : rects) {
-            r.Update(dt); // 위치 업데이트 및 테두리 충돌 검사
-        }
+        // [1. Update]
+        for (auto& r : rects) r.Update(dt);
 
-
-        // [단계 2] 동적 버텍스 데이터 생성 및 GPU 복사 (CPU -> GPU)
-      
-        struct Vertex { float x, y, r, g, b, a; };
-        std::vector<Vertex> vDataList;
+        // [2. Render Data 준비]
+        std::vector<Rect::Vertex> vDataList;
         vDataList.reserve(rects.size() * 4);
+        for (const auto& r : rects) r.Render(vDataList);
 
-        for (const auto& r : rects) {
-            float hw = r.width / 2.0f;
-            float hh = r.height / 2.0f;
-            // 사각형 하나당 4개의 정점 생성
-            vDataList.push_back({ r.x - hw, r.y + hh, r.r, r.g, r.b, r.a }); // 좌상
-            vDataList.push_back({ r.x + hw, r.y + hh, r.r, r.g, r.b, r.a }); // 우상
-            vDataList.push_back({ r.x + hw, r.y - hh, r.r, r.g, r.b, r.a }); // 우하
-            vDataList.push_back({ r.x - hw, r.y - hh, r.r, r.g, r.b, r.a }); // 좌하
-        }
-
+        // GPU 메모리 복사
         void* mappedPtr;
         vertexBuffer->Map(0, nullptr, &mappedPtr);
-        memcpy(mappedPtr, vDataList.data(), vDataList.size() * sizeof(Vertex));
+        memcpy(mappedPtr, vDataList.data(), vDataList.size() * sizeof(Rect::Vertex));
         vertexBuffer->Unmap(0, nullptr);
-
     
         // [단계 3] GPU 명령 기록 시작 (Recording)
       
@@ -487,6 +471,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
             fence->SetEventOnCompletion(waitValue, fenceEvent);
             WaitForSingleObject(fenceEvent, INFINITE);
         }
+
+  
     }
 
     return 0;
