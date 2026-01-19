@@ -30,4 +30,4 @@ void Time::SetTimeStop(bool a)
 {
     TimeStop = a;
 }
-float Time::DeltaTime() { return TimeStop ? 0.0f : DeltaTimeValue; }
+float Time::GetDeltaTime() { return TimeStop ? 0.0f : DeltaTimeValue; }

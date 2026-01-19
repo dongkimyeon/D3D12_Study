@@ -9,7 +9,7 @@ public:
     static void Initialize();
     static void Update();
     static void SetTimeStop(bool a);
-    static float DeltaTime();
+    static float GetDeltaTime();
 
 private:
     static LARGE_INTEGER CpuFrequency;

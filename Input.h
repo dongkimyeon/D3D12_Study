@@ -22,6 +22,8 @@ enum class eKeyCode
     LButton, MButton, RButton, SPACE, ESC, BACK,
     SHIFT,
     F1,
+    MINUS,      // - 키 추가
+    EQUAL,      // = 키 추가
     End
 };
 
