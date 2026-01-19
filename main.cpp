@@ -109,370 +109,454 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/)
+// ========================================
+// 초기화 함수들
+// ========================================
+
+// 1. 윈도우 생성
+HWND CreateAppWindow(HINSTANCE hInstance)
 {
+    WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
+    winClass.style = CS_HREDRAW | CS_VREDRAW;
+    winClass.lpfnWndProc = &WndProc;
+    winClass.hInstance = hInstance;
+    winClass.hCursor = LoadCursorW(0, IDC_ARROW);
+    winClass.lpszClassName = L"D3D12WindowClass";
 
-    // 1. 윈도우 생성
-    HWND hwnd;
-    {
-        WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
-        winClass.style = CS_HREDRAW | CS_VREDRAW;
-        winClass.lpfnWndProc = &WndProc;
-        winClass.hInstance = hInstance;
-        winClass.hCursor = LoadCursorW(0, IDC_ARROW);
-        winClass.lpszClassName = L"D3D12WindowClass";
+    if (!RegisterClassExW(&winClass)) return nullptr;
 
-        if (!RegisterClassExW(&winClass)) return 0;
+    // 실제 그리고 싶은 영역(Client Area)을 1280x720으로 맞추기 위해 창 전체 크기를 계산
+    RECT initialRect = { 0, 0, 1280, 720 };
+    AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
 
-        // 실제 그리고 싶은 영역(Client Area)을 1024x768로 맞추기 위해 창 전체 크기를 계산
-        RECT initialRect = { 0, 0, 1280, 720 };
-        AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
+    return CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"D3D12 Triangle",
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+        initialRect.right - initialRect.left, initialRect.bottom - initialRect.top,
+        0, 0, hInstance, 0);
+}
 
-        hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"D3D12 Triangle",
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-            initialRect.right - initialRect.left, initialRect.bottom - initialRect.top,
-            0, 0, hInstance, 0);
-    }
-
-	Input::Initialize();
-	Time::Initialize();
-
-
-  
+// 2. 디버그 레이어 활성화
+void EnableDebugLayer()
+{
 #if defined(DEBUG_BUILD)
+    ID3D12Debug* debugController;
+    if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void**)&debugController)))
     {
-        // 2. 디버그 레이어 활성화
-  // D3D12는 잘못된 코드를 작성해도 무시하고 지나가다가 나중에 크래시가 날 수 있습니다.
-  // 디버그 레이어를 켜면 API 호출 오류를 실시간으로 출력창에 알려줍니다.
-        ID3D12Debug* debugController;
-        if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void**)&debugController)))
-        {
-            debugController->EnableDebugLayer();
-            debugController->Release();
-        }
+        debugController->EnableDebugLayer();
+        debugController->Release();
     }
 #endif
-    // 3. 디바이스 생성 (GPU 선택)
-    ID3D12Device* d3d12Device;
+}
+
+// 3. D3D12 디바이스 생성
+ID3D12Device* CreateD3D12Device()
+{
+    IDXGIFactory4* dxgiFactory;
+    CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&dxgiFactory);
+
+    IDXGIAdapter1* selectedAdapter = nullptr;
+
+    // 시스템에 장착된 여러 GPU 중 가장 성능이 좋은 하드웨어 GPU를 찾음
+    for (UINT i = 0; dxgiFactory->EnumAdapters1(i, &selectedAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
     {
-        IDXGIFactory4* dxgiFactory;
-        CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&dxgiFactory);
-
-        IDXGIAdapter1* selectedAdapter = nullptr;
-        SIZE_T maxDedicatedVideoMemory = 0;
-
-        // 시스템에 장착된 여러 GPU 중 가장 성능이 좋은(VRAM이 큰) 하드웨어 GPU를 찾음
-        for (UINT i = 0; dxgiFactory->EnumAdapters1(i, &selectedAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
-        {
-            DXGI_ADAPTER_DESC1 desc;
-            selectedAdapter->GetDesc1(&desc);
-            // 소프트웨어 렌더러는 제외하고 하드웨어 GPU만 선택
-            if (!(desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)) {
-                break;
-            }
-            selectedAdapter->Release();
+        DXGI_ADAPTER_DESC1 desc;
+        selectedAdapter->GetDesc1(&desc);
+        // 소프트웨어 렌더러는 제외하고 하드웨어 GPU만 선택
+        if (!(desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)) {
+            break;
         }
-
-        // Feature Level 11.0: D3D12를 쓰더라도 최소 D3D11 하드웨어 기능은 지원해야 함
-        D3D12CreateDevice(selectedAdapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&d3d12Device);
-
         selectedAdapter->Release();
-        dxgiFactory->Release();
     }
 
+    ID3D12Device* device;
+    D3D12CreateDevice(selectedAdapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), (void**)&device);
 
-    // 4. 커맨드 큐 생성
-    // GPU는 CPU와 비동기적으로 작동합니다. CPU가 "이거 그려줘"라고 명령을 던지면
-    // 명령들이 이 '큐(Queue)'에 쌓이고 GPU가 순서대로 가져가서 처리합니다.
- 
+    selectedAdapter->Release();
+    dxgiFactory->Release();
+
+    return device;
+}
+
+// 4. 커맨드 큐 생성
+ID3D12CommandQueue* CreateCommandQueue(ID3D12Device* device)
+{
+    D3D12_COMMAND_QUEUE_DESC desc = {};
+    desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
     ID3D12CommandQueue* commandQueue;
-    {
-        D3D12_COMMAND_QUEUE_DESC desc = {};
-        desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; // 일반적인 그래픽 명령용
-        d3d12Device->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), (void**)&commandQueue);
-    }
+    device->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), (void**)&commandQueue);
 
+    return commandQueue;
+}
 
-    // 5. 스왑체인 생성
-    // 화면에 보여지는 버퍼(Front Buffer)와 그리는 중인 버퍼(Back Buffer)를 교체해주는 시스템
+// 5. 스왑체인 생성
+IDXGISwapChain3* CreateSwapChain(ID3D12CommandQueue* commandQueue, HWND hwnd)
+{
+    IDXGIFactory4* dxgiFactory;
+    CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&dxgiFactory);
+
+    DXGI_SWAP_CHAIN_DESC1 desc = {};
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    desc.BufferCount = FRAME_BUFFER_COUNT;
+    desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+    IDXGISwapChain1* tempChain;
+    dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &desc, nullptr, nullptr, &tempChain);
 
     IDXGISwapChain3* swapChain;
-    {
-        IDXGIFactory4* dxgiFactory;
-        CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&dxgiFactory);
+    tempChain->QueryInterface(__uuidof(IDXGISwapChain3), (void**)&swapChain);
+    tempChain->Release();
+    dxgiFactory->Release();
 
-        DXGI_SWAP_CHAIN_DESC1 desc = {};
-        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        desc.SampleDesc.Count = 1; // MSAA 미사용
-        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        desc.BufferCount = FRAME_BUFFER_COUNT;
-        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // 성능이 가장 좋은 최신 방식
+    return swapChain;
+}
 
-        IDXGISwapChain1* tempChain;
-        dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &desc, nullptr, nullptr, &tempChain);
-        tempChain->QueryInterface(__uuidof(IDXGISwapChain3), (void**)&swapChain);
-        tempChain->Release();
-        dxgiFactory->Release();
-    }
-
-  
-    // 6. RTV (Render Target View) 디스크립터 힙 생성
-    // D3D12에서 리소스(텍스처 등)를 사용하려면 'View(Descriptor)'가 필요합니다.
-    // 디스크립터 힙은 이런 View들을 담아두는 배열 같은 메모리 공간입니다.
+// 6. RTV 디스크립터 힙 생성
+ID3D12DescriptorHeap* CreateRTVDescriptorHeap(ID3D12Device* device, UINT& outDescriptorSize)
+{
+    D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+    desc.NumDescriptors = FRAME_BUFFER_COUNT;
+    desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
     ID3D12DescriptorHeap* rtvHeap;
-    UINT rtvDescriptorSize;
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.NumDescriptors = FRAME_BUFFER_COUNT;
-        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV; // 렌더 타겟용 힙
-        d3d12Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), (void**)&rtvHeap);
-        // 하드웨어마다 디스크립터 한 칸의 크기가 다르므로 물어봐야 함 (포인터 연산용)
-        rtvDescriptorSize = d3d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), (void**)&rtvHeap);
+
+    outDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    return rtvHeap;
+}
+
+// 7. 프레임 버퍼 생성
+void CreateFrameBuffers(ID3D12Device* device, IDXGISwapChain3* swapChain, 
+                        ID3D12DescriptorHeap* rtvHeap, UINT rtvDescriptorSize,
+                        ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT])
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) {
+        swapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&frameBuffers[i]);
+        device->CreateRenderTargetView(frameBuffers[i], nullptr, rtvHandle);
+        rtvHandle.ptr += rtvDescriptorSize;
+    }
+}
+
+// 8. 커맨드 알로케이터 및 리스트 생성
+void CreateCommandAllocatorsAndList(ID3D12Device* device,
+                                     ID3D12CommandAllocator* commandAllocators[FRAME_BUFFER_COUNT],
+                                     ID3D12GraphicsCommandList** outCommandList)
+{
+    for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) {
+        device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, 
+                                       __uuidof(ID3D12CommandAllocator), 
+                                       (void**)&commandAllocators[i]);
     }
 
-    // 7. 백버퍼 리소스 및 View 생성
-    // 스왑체인이 관리하는 실제 메모리(버퍼)를 가져와서 RTV와 연결합니다.
-  
-    ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT];
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-        for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) {
-            swapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&frameBuffers[i]);
-            // 리소스와 뷰를 연결: 이제 rtvHandle을 통해 이 버퍼에 그림을 그릴 수 있음
-            d3d12Device->CreateRenderTargetView(frameBuffers[i], nullptr, rtvHandle);
-            rtvHandle.ptr += rtvDescriptorSize; // 다음 칸으로 이동
-        }
-    }
+    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocators[0], 
+                              nullptr, __uuidof(ID3D12GraphicsCommandList), 
+                              (void**)outCommandList);
+    (*outCommandList)->Close();
+}
 
-  
-    // 8 & 9. 커맨드 알로케이터 및 리스트
-    // Allocator: 명령을 저장할 메모리 공간 / List: 명령을 기록하는 도구(녹화기)
- 
-    ID3D12CommandAllocator* commandAllocators[FRAME_BUFFER_COUNT];
-    ID3D12GraphicsCommandList* commandList;
-    {
-        for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++) {
-            d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&commandAllocators[i]);
-        }
-        // 리스트는 하나만 있어도 됩니다. (매 프레임 Reset해서 다시 기록하므로)
-        d3d12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocators[0], nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&commandList);
-        commandList->Close(); // 생성 직후엔 닫아두는 것이 관례
-    }
+// 9. Fence 및 이벤트 생성
+void CreateSyncObjects(ID3D12Device* device, ID3D12Fence** outFence, HANDLE* outEvent)
+{
+    device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)outFence);
+    *outEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+}
 
+// 10. 셰이더 컴파일
+void CompileShaders(ID3DBlob** outVSBlob, ID3DBlob** outPSBlob)
+{
+    D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "vs_main", "vs_5_1", 0, 0, outVSBlob, nullptr);
+    D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "ps_main", "ps_5_1", 0, 0, outPSBlob, nullptr);
+}
 
-    // 10. Fence 생성 (CPU-GPU 동기화 도구)
-    // GPU가 "나 여기까지 다 그렸어!"라고 신호를 주면 CPU가 확인하는 용도
- 
-    ID3D12Fence* fence;
-    UINT64 fenceValue = 0;
-    HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-    d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&fence);
+// 11. 루트 시그니처 생성
+ID3D12RootSignature* CreateRootSignature(ID3D12Device* device)
+{
+    D3D12_ROOT_SIGNATURE_DESC desc = {};
+    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    // 11 & 12. 셰이더 컴파일
-    // GPU에서 실행될 소형 프로그램(HLSL)을 바이너리 형태로 변환
-    
-    ID3DBlob* vsBlob, * psBlob;
-    D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "vs_main", "vs_5_1", 0, 0, &vsBlob, nullptr);
-    D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "ps_main", "ps_5_1", 0, 0, &psBlob, nullptr);
-
-
-    // 13. 루트 시그니처 (Root Signature)
-    // 셰이더와 리소스(상수 버퍼, 텍스처 등) 사이의 "입구"를 정의하는 설계도
+    ID3DBlob* sigBlob;
+    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, nullptr);
 
     ID3D12RootSignature* rootSignature;
-    {
-        D3D12_ROOT_SIGNATURE_DESC desc = {};
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-        ID3DBlob* sigBlob;
-        D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, nullptr);
-        d3d12Device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), __uuidof(ID3D12RootSignature), (void**)&rootSignature);
-        sigBlob->Release();
-    }
+    device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), 
+                                __uuidof(ID3D12RootSignature), (void**)&rootSignature);
+    sigBlob->Release();
 
+    return rootSignature;
+}
 
-    // 14. PSO (Pipeline State Object) 생성
-    // "어떤 셰이더를 쓸지", "어떻게 섞을지(Blend)", "어디를 깎아낼지(Cull)" 등
-    // 모든 렌더링 상태를 하나의 거대한 상태 객체로 묶어서 GPU에 한 번에 전달합니다.
+// 12. 파이프라인 상태 객체 생성
+ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignature* rootSignature,
+                                          ID3DBlob* vsBlob, ID3DBlob* psBlob)
+{
+    D3D12_INPUT_ELEMENT_DESC layout[] = {
+        { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
 
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { layout, 2 };
+    psoDesc.pRootSignature = rootSignature;
+    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
+    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc.Count = 1;
 
     ID3D12PipelineState* pipelineState;
-    {
-        D3D12_INPUT_ELEMENT_DESC layout[] = {
-            { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-        };
+    device->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState), (void**)&pipelineState);
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.InputLayout = { layout, 2 };
-        psoDesc.pRootSignature = rootSignature;
-        psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-        psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    return pipelineState;
+}
 
-        //psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME; // 와이어프레임 모드
-        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID; // 솔리드 모드
+// 13. 정점 버퍼 생성
+void CreateVertexBuffer(ID3D12Device* device, UINT maxVertexBufferSize,
+                        ID3D12Resource** outVertexBuffer, D3D12_VERTEX_BUFFER_VIEW* outVBView)
+{
+    D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxVertexBufferSize, 1, 1, 1, 
+                                DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, 
+                                D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, 
+                                    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, 
+                                    __uuidof(ID3D12Resource), (void**)outVertexBuffer);
 
-        //psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT; // 앞면 컬링
-        //psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK; // 뒷면 컬링
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // 컬링 없음
-        psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-        psoDesc.SampleMask = UINT_MAX;
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-        psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.SampleDesc.Count = 1;
+    outVBView->BufferLocation = (*outVertexBuffer)->GetGPUVirtualAddress();
+    outVBView->StrideInBytes = sizeof(Rect::Vertex);
+    outVBView->SizeInBytes = maxVertexBufferSize;
+}
 
-        d3d12Device->CreateGraphicsPipelineState(&psoDesc, __uuidof(ID3D12PipelineState), (void**)&pipelineState);
+// 14. 인덱스 버퍼 생성
+void CreateIndexBuffer(ID3D12Device* device, UINT maxIndexBufferSize,
+                       ID3D12Resource** outIndexBuffer, D3D12_INDEX_BUFFER_VIEW* outIBView)
+{
+    D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1, 
+                                DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, 
+                                D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, 
+                                    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, 
+                                    __uuidof(ID3D12Resource), (void**)outIndexBuffer);
+
+    // 인덱스는 최대치까지 미리 채워둠
+    std::vector<uint16_t> indices;
+    for (UINT i = 0; i < MAX_RECT_COUNT; ++i) {
+        uint16_t base = (uint16_t)(i * 4);
+        indices.push_back(base + 0); indices.push_back(base + 1); indices.push_back(base + 2);
+        indices.push_back(base + 0); indices.push_back(base + 2); indices.push_back(base + 3);
     }
+    void* iData;
+    (*outIndexBuffer)->Map(0, nullptr, &iData);
+    memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));
+    (*outIndexBuffer)->Unmap(0, nullptr);
 
+    outIBView->BufferLocation = (*outIndexBuffer)->GetGPUVirtualAddress();
+    outIBView->Format = DXGI_FORMAT_R16_UINT;
+    outIBView->SizeInBytes = maxIndexBufferSize;
+}
 
-    // 15. Rect 객체 관리 및 버퍼 생성
-    std::vector<Rect> rects;
-    std::mt19937 rng(1337);
-
-    for (int i = 0; i < 5; ++i) {
+// 15. 게임 오브젝트 초기화
+void InitializeGameObjects(std::vector<Rect>& rects, std::mt19937& rng, int initialCount)
+{
+    for (int i = 0; i < initialCount; ++i) {
         Rect r;
         r.Initialize(rng);
         rects.push_back(r);
     }
+}
 
-    // 최대 개수에 맞춰 버퍼 크기 미리 할당
+// ========================================
+// 렌더링 함수들
+// ========================================
+
+// 정점 데이터 업데이트
+void UpdateVertexBuffer(const std::vector<Rect>& rects, ID3D12Resource* vertexBuffer)
+{
+    std::vector<Rect::Vertex> vDataList;
+    vDataList.reserve(rects.size() * 4);
+    for (const auto& r : rects) {
+        r.Render(vDataList);
+    }
+
+    void* mappedPtr;
+    vertexBuffer->Map(0, nullptr, &mappedPtr);
+    memcpy(mappedPtr, vDataList.data(), vDataList.size() * sizeof(Rect::Vertex));
+    vertexBuffer->Unmap(0, nullptr);
+}
+
+// 프레임 렌더링
+void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllocators[FRAME_BUFFER_COUNT],
+                 ID3D12GraphicsCommandList* commandList, ID3D12PipelineState* pipelineState,
+                 ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT], ID3D12DescriptorHeap* rtvHeap,
+                 UINT rtvDescriptorSize, ID3D12RootSignature* rootSignature,
+                 const D3D12_VERTEX_BUFFER_VIEW* vbView, const D3D12_INDEX_BUFFER_VIEW* ibView,
+                 HWND hwnd, UINT rectCount)
+{
+    UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
+    commandAllocators[backBufferIdx]->Reset();
+    commandList->Reset(commandAllocators[backBufferIdx], pipelineState);
+
+    // 리소스 상태 전환: Present -> RenderTarget
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = frameBuffers[backBufferIdx];
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList->ResourceBarrier(1, &barrier);
+
+    // 화면 클리어
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    rtvHandle.ptr += backBufferIdx * rtvDescriptorSize;
+    float clearColor[] = { 0.05f, 0.05f, 0.1f, 1.0f };
+    commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+    // 뷰포트 및 시저렉트 설정
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    D3D12_VIEWPORT vp = { 0, 0, (float)clientRect.right, (float)clientRect.bottom, 0, 1 };
+    D3D12_RECT scissor = { 0, 0, clientRect.right, clientRect.bottom };
+
+    commandList->RSSetViewports(1, &vp);
+    commandList->RSSetScissorRects(1, &scissor);
+    commandList->SetGraphicsRootSignature(rootSignature);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // 버퍼 바인딩 및 그리기
+    commandList->IASetIndexBuffer(ibView);
+    commandList->IASetVertexBuffers(0, 1, vbView);
+    commandList->DrawIndexedInstanced(rectCount * 6, 1, 0, 0, 0);
+
+    // 리소스 상태 전환: RenderTarget -> Present
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    commandList->ResourceBarrier(1, &barrier);
+
+    commandList->Close();
+}
+
+// GPU 동기화
+void WaitForGPU(ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64& fenceValue, HANDLE fenceEvent)
+{
+    UINT64 waitValue = ++fenceValue;
+    commandQueue->Signal(fence, waitValue);
+    if (fence->GetCompletedValue() < waitValue) {
+        fence->SetEventOnCompletion(waitValue, fenceEvent);
+        WaitForSingleObject(fenceEvent, INFINITE);
+    }
+}
+
+// ========================================
+// WinMain - 진입점
+// ========================================
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/)
+{
+    // 윈도우 생성
+    HWND hwnd = CreateAppWindow(hInstance);
+    if (!hwnd) return 0;
+
+    // 시스템 초기화
+    Input::Initialize();
+    Time::Initialize();
+
+    // D3D12 초기화
+    EnableDebugLayer();
+    ID3D12Device* d3d12Device = CreateD3D12Device();
+    ID3D12CommandQueue* commandQueue = CreateCommandQueue(d3d12Device);
+    IDXGISwapChain3* swapChain = CreateSwapChain(commandQueue, hwnd);
+
+    // 렌더 타겟 설정
+    UINT rtvDescriptorSize;
+    ID3D12DescriptorHeap* rtvHeap = CreateRTVDescriptorHeap(d3d12Device, rtvDescriptorSize);
+    ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT];
+    CreateFrameBuffers(d3d12Device, swapChain, rtvHeap, rtvDescriptorSize, frameBuffers);
+
+    // 커맨드 리스트 설정
+    ID3D12CommandAllocator* commandAllocators[FRAME_BUFFER_COUNT];
+    ID3D12GraphicsCommandList* commandList;
+    CreateCommandAllocatorsAndList(d3d12Device, commandAllocators, &commandList);
+
+    // 동기화 객체
+    ID3D12Fence* fence;
+    HANDLE fenceEvent;
+    UINT64 fenceValue = 0;
+    CreateSyncObjects(d3d12Device, &fence, &fenceEvent);
+
+    // 셰이더 및 파이프라인
+    ID3DBlob* vsBlob, * psBlob;
+    CompileShaders(&vsBlob, &psBlob);
+    ID3D12RootSignature* rootSignature = CreateRootSignature(d3d12Device);
+    ID3D12PipelineState* pipelineState = CreatePipelineState(d3d12Device, rootSignature, vsBlob, psBlob);
+
+    // 버퍼 생성
     UINT maxVertexBufferSize = MAX_RECT_COUNT * 4 * sizeof(Rect::Vertex);
     UINT maxIndexBufferSize = MAX_RECT_COUNT * 6 * sizeof(uint16_t);
-
     ID3D12Resource* vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW vbView;
-    {
-        D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxVertexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-        d3d12Device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(ID3D12Resource), (void**)&vertexBuffer);
-
-        vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-        vbView.StrideInBytes = sizeof(Rect::Vertex);
-        vbView.SizeInBytes = maxVertexBufferSize;
-    }
-
+    CreateVertexBuffer(d3d12Device, maxVertexBufferSize, &vertexBuffer, &vbView);
     ID3D12Resource* indexBuffer;
     D3D12_INDEX_BUFFER_VIEW ibView;
-    {
-        D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-        D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-        d3d12Device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &res, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(ID3D12Resource), (void**)&indexBuffer);
+    CreateIndexBuffer(d3d12Device, maxIndexBufferSize, &indexBuffer, &ibView);
 
-        // 인덱스는 최대치까지 미리 채워둠
-        std::vector<uint16_t> indices;
-        for (UINT i = 0; i < MAX_RECT_COUNT; ++i) {
-            uint16_t base = (uint16_t)(i * 4);
-            indices.push_back(base + 0); indices.push_back(base + 1); indices.push_back(base + 2);
-            indices.push_back(base + 0); indices.push_back(base + 2); indices.push_back(base + 3);
-        }
-        void* iData;
-        indexBuffer->Map(0, nullptr, &iData);
-        memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));
-        indexBuffer->Unmap(0, nullptr);
+    // 게임 오브젝트 초기화
+    std::vector<Rect> rects;
+    std::mt19937 rng(1337);
+    InitializeGameObjects(rects, rng, 5);
 
-        ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-        ibView.Format = DXGI_FORMAT_R16_UINT;
-        ibView.SizeInBytes = maxIndexBufferSize;
-    }
- 
-    // 16. 메인 렌더 루프
-
+    // 메인 루프
     MSG msg = {};
     while (msg.message != WM_QUIT)
     {
+        // 메시지 처리
         if (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
             continue;
         }
 
+        // 시간 및 입력 업데이트
         Time::Update();
         Input::Update();
         float dt = Time::GetDeltaTime();
 
-        // [입력 처리] Q를 누르면 사각형 추가
+        // 입력 처리 - Q키로 사각형 추가
         if (Input::GetKeyDown(eKeyCode::Q) && rects.size() < MAX_RECT_COUNT) {
             Rect r;
             r.Initialize(rng);
             rects.push_back(r);
         }
 
-        // [1. Update]
-        for (auto& r : rects) r.Update(dt);
+        // 게임 오브젝트 업데이트
+        for (auto& r : rects) {
+            r.Update(dt);
+        }
 
-        // [2. Render Data 준비]
-        std::vector<Rect::Vertex> vDataList;
-        vDataList.reserve(rects.size() * 4);
-        for (const auto& r : rects) r.Render(vDataList);
+        // 정점 버퍼 업데이트
+        UpdateVertexBuffer(rects, vertexBuffer);
 
-        // GPU 메모리 복사
-        void* mappedPtr;
-        vertexBuffer->Map(0, nullptr, &mappedPtr);
-        memcpy(mappedPtr, vDataList.data(), vDataList.size() * sizeof(Rect::Vertex));
-        vertexBuffer->Unmap(0, nullptr);
-    
-        // [단계 3] GPU 명령 기록 시작 (Recording)
-      
-        UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
-        commandAllocators[backBufferIdx]->Reset();
-        commandList->Reset(commandAllocators[backBufferIdx], pipelineState);
+        // 렌더링
+        RenderFrame(swapChain, commandAllocators, commandList, pipelineState, frameBuffers,
+                    rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, (UINT)rects.size());
 
-        // 리소스 상태 전환: Present -> RenderTarget
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = frameBuffers[backBufferIdx];
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        commandList->ResourceBarrier(1, &barrier);
-
-        // 화면 클리어
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-        rtvHandle.ptr += backBufferIdx * rtvDescriptorSize;
-        float clearColor[] = { 0.05f, 0.05f, 0.1f, 1.0f }; // 어두운 배경색
-        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-        // 렌더링 상태 설정
-        RECT clientRect; GetClientRect(hwnd, &clientRect);
-        D3D12_VIEWPORT vp = { 0, 0, (float)clientRect.right, (float)clientRect.bottom, 0, 1 };
-        D3D12_RECT scissor = { 0, 0, clientRect.right, clientRect.bottom };
-
-        commandList->RSSetViewports(1, &vp);
-        commandList->RSSetScissorRects(1, &scissor);
-        commandList->SetGraphicsRootSignature(rootSignature);
-        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        // 버퍼 바인딩 및 그리기
-        commandList->IASetIndexBuffer(&ibView);
-        commandList->IASetVertexBuffers(0, 1, &vbView);
-        commandList->DrawIndexedInstanced((UINT)rects.size() * 6, 1, 0, 0, 0);
-
-        // 리소스 상태 전환: RenderTarget -> Present
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        commandList->ResourceBarrier(1, &barrier);
-
-        commandList->Close();
-
-       
-        // [단계 4] 실행 및 동기화 (Execution & Sync)
-    
+        // GPU에 명령 전송
         ID3D12CommandList* lists[] = { commandList };
         commandQueue->ExecuteCommandLists(1, lists);
 
-        // 수직 동기화(VSync)를 사용하여 화면 표시
+        // 화면 표시
         swapChain->Present(1, 0);
 
-        // CPU-GPU 동기화 (GPU가 현재 프레임을 마칠 때까지 대기)
-        UINT64 waitValue = ++fenceValue;
-        commandQueue->Signal(fence, waitValue);
-        if (fence->GetCompletedValue() < waitValue) {
-            fence->SetEventOnCompletion(waitValue, fenceEvent);
-            WaitForSingleObject(fenceEvent, INFINITE);
-        }
-
-  
+        // GPU 동기화
+        WaitForGPU(commandQueue, fence, fenceValue, fenceEvent);
     }
 
     return 0;
