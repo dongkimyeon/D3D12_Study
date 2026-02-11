@@ -1,6 +1,12 @@
 // 버텍스 셰이더 입력 구조체
 // OpenGL: layout(location = 0) in vec2 pos; 와 유사
 // HLSL: 시맨틱(Semantic)을 사용하여 속성 매핑
+
+cbuffer GlobalData : register(b0)
+{
+    // 전역 상수 버퍼에 필요한 데이터 추가 가능
+    float globalColor;
+};
 struct VS_Input
 {
     float2 pos : POS;      // POS 시맨틱 - C++ 코드의 INPUT_ELEMENT_DESC와 매칭
@@ -43,5 +49,5 @@ float4 ps_main(VS_Output input) : SV_TARGET
 {
     // 보간된 색상을 그대로 반환
     // OpenGL: FragColor = input.color; 와 동일
-    return input.color;   
+    return input.color * globalColor;   
 }

@@ -40,5 +40,8 @@
     <ClInclude Include="Time.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="d3dx12.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

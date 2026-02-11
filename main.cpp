@@ -9,6 +9,7 @@
 #include <d3dcompiler.h>    // HLSL 셰이더 컴파일러
 #include <assert.h>         // 오류 검출용
 
+
 // C++ 표준 라이브러리
 #include <cstdint>
 #include <vector>
@@ -91,6 +92,7 @@ public:
     }
 };
 
+float myColor[3] = { 0.0f, 1.0f, 0.0f };
 // 윈도우 메시지 처리기 (콜백 함수)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -275,18 +277,38 @@ void CompileShaders(ID3DBlob** outVSBlob, ID3DBlob** outPSBlob)
 // 11. 루트 시그니처 생성
 ID3D12RootSignature* CreateRootSignature(ID3D12Device* device)
 {
+
+    // D3D12 기본 구조체 직접 사용 (헬퍼 헤더 불필요)
+    D3D12_ROOT_PARAMETER rootParameter = {};
+    rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // 픽셀 셰이더용
+    rootParameter.Constants.Num32BitValues = 4; // float4 (RGBA)
+    rootParameter.Constants.ShaderRegister = 0; // b0
+    rootParameter.Constants.RegisterSpace = 0;
+
     D3D12_ROOT_SIGNATURE_DESC desc = {};
+    desc.NumParameters = 1;
+    desc.pParameters = &rootParameter;
     desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    ID3DBlob* sigBlob;
-    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, nullptr);
+    ID3DBlob* sigBlob = nullptr;
+    ID3DBlob* errorBlob = nullptr;
 
-    ID3D12RootSignature* rootSignature;
-    device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), 
-                                __uuidof(ID3D12RootSignature), (void**)&rootSignature);
-    sigBlob->Release();
+    // 이 함수는 d3d12.h에 기본 포함되어 있습니다.
+    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errorBlob);
+
+    if (errorBlob) {
+        OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+        errorBlob->Release();
+    }
+
+    ID3D12RootSignature* rootSignature = nullptr;
+    device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
+
+    if (sigBlob) sigBlob->Release();
 
     return rootSignature;
+
 }
 
 // 12. 파이프라인 상태 객체 생성
@@ -303,8 +325,8 @@ ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignatu
     psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME; // 와이어프레임 모드 / 기본값: D3D12_FILL_MODE_SOLID
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // 양면 렌더링 NONE/BACK/FRONT / 기본값: D3D12_CULL_MODE_BACK
     psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -431,6 +453,9 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->SetGraphicsRootSignature(rootSignature);
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+
+    commandList->DrawIndexedInstanced(rectCount * 6, 1, 0, 0, 0);
     // 버퍼 바인딩 및 그리기
     commandList->IASetIndexBuffer(ibView);
     commandList->IASetVertexBuffers(0, 1, vbView);
@@ -444,10 +469,10 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->Close();
 }
 
-// GPU 동기화
+// GPU 동기화 - CPU가 GPU 작업 완료를 기다림
 void WaitForGPU(ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64& fenceValue, HANDLE fenceEvent)
 {
-    UINT64 waitValue = ++fenceValue;
+	UINT64 waitValue = ++fenceValue; // 다음 대기할 펜스 값
     commandQueue->Signal(fence, waitValue);
     if (fence->GetCompletedValue() < waitValue) {
         fence->SetEventOnCompletion(waitValue, fenceEvent);
@@ -536,6 +561,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
             rects.push_back(r);
         }
 
+        if (Input::GetKeyDown(eKeyCode::K))
+        {
+            myColor[0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+            myColor[1] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+			myColor[2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        }
         // 게임 오브젝트 업데이트
         for (auto& r : rects) {
             r.Update(dt);
