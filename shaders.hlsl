@@ -5,7 +5,7 @@
 cbuffer GlobalData : register(b0)
 {
     // 전역 상수 버퍼에 필요한 데이터 추가 가능
-    float globalColor;
+    float4 globalColor;
 };
 struct VS_Input
 {

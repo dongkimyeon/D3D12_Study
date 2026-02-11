@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <vector>
 #include <random>
+#include <iostream>
 
 // 사용자 정의 헤더 파일
 #include "Input.h"
@@ -92,7 +93,7 @@ public:
     }
 };
 
-float myColor[3] = { 0.0f, 1.0f, 0.0f };
+float myColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 // 윈도우 메시지 처리기 (콜백 함수)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -566,6 +567,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
             myColor[0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
             myColor[1] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 			myColor[2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+			std::cout << "R: " << myColor[0] << " G: " << myColor[1] << " B: " << myColor[2] << std::endl;
         }
         // 게임 오브젝트 업데이트
         for (auto& r : rects) {
