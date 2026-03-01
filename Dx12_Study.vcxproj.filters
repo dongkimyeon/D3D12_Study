@@ -27,6 +27,9 @@
     <ClCompile Include="Time.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="OBJLoader.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders.hlsl">
@@ -42,6 +45,9 @@
     </ClInclude>
     <ClInclude Include="d3dx12.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="OBJLoader.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

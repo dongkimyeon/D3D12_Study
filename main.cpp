@@ -10,6 +10,10 @@
 #include <assert.h>         // 오류 검출용
 
 
+#include "OBJLoader.h"
+#include <DirectXMath.h>  // 행렬 연산용
+using namespace DirectX;
+
 // C++ 표준 라이브러리
 #include <cstdint>
 #include <vector>
@@ -33,63 +37,20 @@ const UINT FRAME_BUFFER_COUNT = 2;
 const UINT MAX_RECT_COUNT = 100; // 최대 사각형 개수 제한 (버퍼 오버플로우 방지)
 
 // 사각형의 상태를 관리하는 구조체
-class Rect {
+class Mesh {
 public:
-    struct Vertex {
-        float x, y;
-        float r, g, b, a;
-    };
+    std::vector<OBJVertex> vertices;
+    std::vector<uint16_t> indices;
+    XMMATRIX worldMatrix;
 
-private:
-    float x, y;
-    float width, height;
-    float vx, vy;
-    float r, g, b, a;
-
-public:
-    // 1. Initialize: 랜덤 값으로 초기화
-    void Initialize(std::mt19937& rng) {
-        std::uniform_real_distribution<float> distPos(-0.7f, 0.7f);
-        std::uniform_real_distribution<float> distVel(-0.5f, 0.5f);
-        std::uniform_real_distribution<float> distCol(0.4f, 1.0f);
-
-        x = distPos(rng);
-        y = distPos(rng);
-        width = 0.2f;
-        height = 0.2f;
-        vx = distVel(rng);
-        vy = distVel(rng);
-        r = distCol(rng);
-        g = distCol(rng);
-        b = distCol(rng);
-        a = 1.0f;
+    void LoadFromOBJ(const std::string& filename) {
+        OBJLoader::Load(filename, vertices, indices);
+        worldMatrix = XMMatrixIdentity();
     }
 
-    // 2. Update: 물리 및 충돌 로직
     void Update(float dt) {
-        x += vx * dt;
-        y += vy * dt;
-
-        if (x - width / 2 < -1.0f || x + width / 2 > 1.0f) {
-            vx *= -1.0f;
-            x = (x < 0) ? -1.0f + width / 2 : 1.0f - width / 2;
-        }
-        if (y - height / 2 < -1.0f || y + height / 2 > 1.0f) {
-            vy *= -1.0f;
-            y = (y < 0) ? -1.0f + height / 2 : 1.0f - height / 2;
-        }
-    }
-
-    // 3. Render: 정점 데이터를 버퍼 리스트에 채움 (Batching 준비)
-    void Render(std::vector<Vertex>& vertexData) const {
-        float hw = width / 2.0f;
-        float hh = height / 2.0f;
-
-        // 좌상, 우상, 우하, 좌하 순서 (Index Buffer와 매칭)
-        vertexData.push_back({ x - hw, y + hh, r, g, b, a });
-        vertexData.push_back({ x + hw, y + hh, r, g, b, a });
-        vertexData.push_back({ x + hw, y - hh, r, g, b, a });
-        vertexData.push_back({ x - hw, y - hh, r, g, b, a });
+        // 회전 애니메이션
+        worldMatrix = XMMatrixRotationY(dt * 0.5f) * worldMatrix;
     }
 };
 
@@ -278,13 +239,11 @@ void CompileShaders(ID3DBlob** outVSBlob, ID3DBlob** outPSBlob)
 // 11. 루트 시그니처 생성
 ID3D12RootSignature* CreateRootSignature(ID3D12Device* device)
 {
-
-    // D3D12 기본 구조체 직접 사용 (헬퍼 헤더 불필요)
     D3D12_ROOT_PARAMETER rootParameter = {};
     rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-    rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // 픽셀 셰이더용
-    rootParameter.Constants.Num32BitValues = 4; // float4 (RGBA)
-    rootParameter.Constants.ShaderRegister = 0; // b0
+    rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    rootParameter.Constants.Num32BitValues = 20; // 4(color) + 16(matrix)
+    rootParameter.Constants.ShaderRegister = 0;
     rootParameter.Constants.RegisterSpace = 0;
 
     D3D12_ROOT_SIGNATURE_DESC desc = {};
@@ -294,8 +253,6 @@ ID3D12RootSignature* CreateRootSignature(ID3D12Device* device)
 
     ID3DBlob* sigBlob = nullptr;
     ID3DBlob* errorBlob = nullptr;
-
-    // 이 함수는 d3d12.h에 기본 포함되어 있습니다.
     D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errorBlob);
 
     if (errorBlob) {
@@ -309,30 +266,35 @@ ID3D12RootSignature* CreateRootSignature(ID3D12Device* device)
     if (sigBlob) sigBlob->Release();
 
     return rootSignature;
-
 }
 
 // 12. 파이프라인 상태 객체 생성
 ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignature* rootSignature,
-                                          ID3DBlob* vsBlob, ID3DBlob* psBlob)
+    ID3DBlob* vsBlob, ID3DBlob* psBlob)
 {
     D3D12_INPUT_ELEMENT_DESC layout[] = {
-        { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "POS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-    psoDesc.InputLayout = { layout, 2 };
+    psoDesc.InputLayout = { layout, 3 };  // 3개로 변경
     psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME; // 와이어프레임 모드 / 기본값: D3D12_FILL_MODE_SOLID
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // 양면 렌더링 NONE/BACK/FRONT / 기본값: D3D12_CULL_MODE_BACK
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;  // SOLID로 변경
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;   // BACK으로 변경
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;  // 추가
+    psoDesc.DepthStencilState.DepthEnable = TRUE;    // 깊이 버퍼 활성화
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1;
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;  // 깊이 버퍼 포맷
     psoDesc.SampleDesc.Count = 1;
 
     ID3D12PipelineState* pipelineState;
@@ -354,14 +316,16 @@ void CreateVertexBuffer(ID3D12Device* device, UINT maxVertexBufferSize,
                                     __uuidof(ID3D12Resource), (void**)outVertexBuffer);
 
     outVBView->BufferLocation = (*outVertexBuffer)->GetGPUVirtualAddress();
-    outVBView->StrideInBytes = sizeof(Rect::Vertex);
+    outVBView->StrideInBytes = sizeof(OBJVertex);
     outVBView->SizeInBytes = maxVertexBufferSize;
 }
 
 // 14. 인덱스 버퍼 생성
-void CreateIndexBuffer(ID3D12Device* device, UINT maxIndexBufferSize,
+void CreateIndexBuffer(ID3D12Device* device, const std::vector<uint16_t>& indices,
                        ID3D12Resource** outIndexBuffer, D3D12_INDEX_BUFFER_VIEW* outIBView)
 {
+    UINT maxIndexBufferSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+    
     D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
     D3D12_RESOURCE_DESC res = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1, 
                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, 
@@ -370,13 +334,7 @@ void CreateIndexBuffer(ID3D12Device* device, UINT maxIndexBufferSize,
                                     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, 
                                     __uuidof(ID3D12Resource), (void**)outIndexBuffer);
 
-    // 인덱스는 최대치까지 미리 채워둠
-    std::vector<uint16_t> indices;
-    for (UINT i = 0; i < MAX_RECT_COUNT; ++i) {
-        uint16_t base = (uint16_t)(i * 4);
-        indices.push_back(base + 0); indices.push_back(base + 1); indices.push_back(base + 2);
-        indices.push_back(base + 0); indices.push_back(base + 2); indices.push_back(base + 3);
-    }
+    // 인덱스 데이터 복사
     void* iData;
     (*outIndexBuffer)->Map(0, nullptr, &iData);
     memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));
@@ -387,14 +345,39 @@ void CreateIndexBuffer(ID3D12Device* device, UINT maxIndexBufferSize,
     outIBView->SizeInBytes = maxIndexBufferSize;
 }
 
-// 15. 게임 오브젝트 초기화
-void InitializeGameObjects(std::vector<Rect>& rects, std::mt19937& rng, int initialCount)
+// 15. 깊이 스텐실 버퍼 생성
+void CreateDepthStencilBuffer(ID3D12Device* device, UINT width, UINT height, 
+                              ID3D12Resource** outDepthStencilBuffer, ID3D12DescriptorHeap** outDSVHeap)
 {
-    for (int i = 0; i < initialCount; ++i) {
-        Rect r;
-        r.Initialize(rng);
-        rects.push_back(r);
-    }
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resDesc.Width = width;
+    resDesc.Height = height;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.MipLevels = 1;
+    resDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    resDesc.SampleDesc.Count = 1;
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    clearValue.DepthStencil.Depth = 1.0f;
+    clearValue.DepthStencil.Stencil = 0;
+
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, 
+                                    D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, 
+                                    IID_PPV_ARGS(outDepthStencilBuffer));
+
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(outDSVHeap));
+
+    device->CreateDepthStencilView(*outDepthStencilBuffer, nullptr, 
+                                   (*outDSVHeap)->GetCPUDescriptorHandleForHeapStart());
 }
 
 // ========================================
@@ -402,17 +385,11 @@ void InitializeGameObjects(std::vector<Rect>& rects, std::mt19937& rng, int init
 // ========================================
 
 // 정점 데이터 업데이트
-void UpdateVertexBuffer(const std::vector<Rect>& rects, ID3D12Resource* vertexBuffer)
+void UpdateVertexBuffer(const Mesh& mesh, ID3D12Resource* vertexBuffer)
 {
-    std::vector<Rect::Vertex> vDataList;
-    vDataList.reserve(rects.size() * 4);
-    for (const auto& r : rects) {
-        r.Render(vDataList);
-    }
-
     void* mappedPtr;
     vertexBuffer->Map(0, nullptr, &mappedPtr);
-    memcpy(mappedPtr, vDataList.data(), vDataList.size() * sizeof(Rect::Vertex));
+    memcpy(mappedPtr, mesh.vertices.data(), mesh.vertices.size() * sizeof(OBJVertex));
     vertexBuffer->Unmap(0, nullptr);
 }
 
@@ -422,7 +399,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
                  ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT], ID3D12DescriptorHeap* rtvHeap,
                  UINT rtvDescriptorSize, ID3D12RootSignature* rootSignature,
                  const D3D12_VERTEX_BUFFER_VIEW* vbView, const D3D12_INDEX_BUFFER_VIEW* ibView,
-                 HWND hwnd, UINT rectCount)
+                 HWND hwnd, const Mesh& mesh, ID3D12Resource* depthStencilBuffer, ID3D12DescriptorHeap* dsvHeap)
 {
     UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
     commandAllocators[backBufferIdx]->Reset();
@@ -441,7 +418,12 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     rtvHandle.ptr += backBufferIdx * rtvDescriptorSize;
     float clearColor[] = { 0.05f, 0.05f, 0.1f, 1.0f };
     commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    
+    // 깊이 버퍼 클리어
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+    
+    commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
     // 뷰포트 및 시저렉트 설정
     RECT clientRect;
@@ -454,13 +436,29 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->SetGraphicsRootSignature(rootSignature);
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+    // 뷰/프로젝션 행렬 계산
+    XMMATRIX view = XMMatrixLookAtLH(
+        XMVectorSet(0, 0, -5, 1),  // 카메라 위치
+        XMVectorSet(0, 0, 0, 1),   // 타겟
+        XMVectorSet(0, 1, 0, 0)    // 업 벡터
+    );
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(
+        XM_PIDIV4,
+        (float)clientRect.right / clientRect.bottom,
+        0.1f,
+        100.0f
+    );
+    XMMATRIX mvp = mesh.worldMatrix * view * proj;
+    XMMATRIX mvpTranspose = XMMatrixTranspose(mvp);
 
-    commandList->DrawIndexedInstanced(rectCount * 6, 1, 0, 0, 0);
+    // 루트 상수로 전달
+    commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+    commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpTranspose, 4);
+
     // 버퍼 바인딩 및 그리기
     commandList->IASetIndexBuffer(ibView);
     commandList->IASetVertexBuffers(0, 1, vbView);
-    commandList->DrawIndexedInstanced(rectCount * 6, 1, 0, 0, 0);
+    commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
 
     // 리소스 상태 전환: RenderTarget -> Present
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -507,6 +505,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT];
     CreateFrameBuffers(d3d12Device, swapChain, rtvHeap, rtvDescriptorSize, frameBuffers);
 
+    // 깊이 버퍼 설정
+    ID3D12Resource* depthStencilBuffer;
+    ID3D12DescriptorHeap* dsvHeap;
+    CreateDepthStencilBuffer(d3d12Device, 1280, 720, &depthStencilBuffer, &dsvHeap);
+
     // 커맨드 리스트 설정
     ID3D12CommandAllocator* commandAllocators[FRAME_BUFFER_COUNT];
     ID3D12GraphicsCommandList* commandList;
@@ -524,20 +527,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     ID3D12RootSignature* rootSignature = CreateRootSignature(d3d12Device);
     ID3D12PipelineState* pipelineState = CreatePipelineState(d3d12Device, rootSignature, vsBlob, psBlob);
 
+    // Mesh 초기화
+    Mesh mesh;
+    mesh.LoadFromOBJ("model.obj");  // OBJ 파일 경로
+
+    // 버퍼 크기 계산
+    UINT maxVertexBufferSize = static_cast<UINT>(mesh.vertices.size() * sizeof(OBJVertex));
+    
     // 버퍼 생성
-    UINT maxVertexBufferSize = MAX_RECT_COUNT * 4 * sizeof(Rect::Vertex);
-    UINT maxIndexBufferSize = MAX_RECT_COUNT * 6 * sizeof(uint16_t);
     ID3D12Resource* vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW vbView;
     CreateVertexBuffer(d3d12Device, maxVertexBufferSize, &vertexBuffer, &vbView);
     ID3D12Resource* indexBuffer;
     D3D12_INDEX_BUFFER_VIEW ibView;
-    CreateIndexBuffer(d3d12Device, maxIndexBufferSize, &indexBuffer, &ibView);
+    CreateIndexBuffer(d3d12Device, mesh.indices, &indexBuffer, &ibView);
 
-    // 게임 오브젝트 초기화
-    std::vector<Rect> rects;
-    std::mt19937 rng(1337);
-    InitializeGameObjects(rects, rng, 5);
+    // 초기 정점 데이터 업로드
+    UpdateVertexBuffer(mesh, vertexBuffer);
 
     // 메인 루프
     MSG msg = {};
@@ -555,32 +561,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
         Input::Update();
         float dt = Time::GetDeltaTime();
 
-        // 입력 처리 - Q키로 사각형 추가
-        if (Input::GetKeyDown(eKeyCode::Q) && rects.size() < MAX_RECT_COUNT) {
-            Rect r;
-            r.Initialize(rng);
-            rects.push_back(r);
-        }
-
         if (Input::GetKeyDown(eKeyCode::K))
         {
             myColor[0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
             myColor[1] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-			myColor[2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+            myColor[2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-			std::cout << "R: " << myColor[0] << " G: " << myColor[1] << " B: " << myColor[2] << std::endl;
-        }
-        // 게임 오브젝트 업데이트
-        for (auto& r : rects) {
-            r.Update(dt);
+            std::cout << "R: " << myColor[0] << " G: " << myColor[1] << " B: " << myColor[2] << std::endl;
         }
 
-        // 정점 버퍼 업데이트
-        UpdateVertexBuffer(rects, vertexBuffer);
+        // 메시 업데이트 (회전)
+        mesh.Update(dt);
 
         // 렌더링
         RenderFrame(swapChain, commandAllocators, commandList, pipelineState, frameBuffers,
-                    rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, (UINT)rects.size());
+                    rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, mesh, depthStencilBuffer, dsvHeap);
 
         // GPU에 명령 전송
         ID3D12CommandList* lists[] = { commandList };
