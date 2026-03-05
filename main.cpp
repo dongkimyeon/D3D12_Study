@@ -426,7 +426,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
 {
     UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
     commandAllocators[backBufferIdx]->Reset();
-    commandList->Reset(commandAllocators[backBufferIdx], pipelineState);  // [추가] 이 줄 추가
+    commandList->Reset(commandAllocators[backBufferIdx], pipelineState); 
 
     // 리소스 상태 전환: Present -> RenderTarget
     D3D12_RESOURCE_BARRIER barrier = {};
@@ -634,11 +634,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
         ImGui::NewFrame();
 
    
-
-
-        // 예시 UI: 배경색 변경 컨트롤
+        //  배경색 변경 컨트롤
         ImGui::Begin("Settings");
         ImGui::ColorEdit3("Triangle Color", myColor); // myColor 변수를 ImGui에서 직접 조작
+        //fps 표시
+		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate); 
         ImGui::End();
 
         ImGui::Render(); // 렌더링 데이터 생성
