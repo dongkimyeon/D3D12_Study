@@ -14,6 +14,10 @@
 #include <DirectXMath.h>  // 행렬 연산용
 using namespace DirectX;
 
+#include "imgui.h"
+#include "backends/imgui_impl_dx12.h"   
+#include "backends/imgui_impl_win32.h"
+
 // C++ 표준 라이브러리
 #include <cstdint>
 #include <vector>
@@ -31,6 +35,8 @@ using namespace DirectX;
 #pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
 
 static bool global_windowDidResize = false;
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // 스왑 체인에 사용할 버퍼 개수. 보통 더블 버퍼링(2)이나 트리플 버퍼링(3)을 사용함.
 const UINT FRAME_BUFFER_COUNT = 2;
@@ -58,6 +64,10 @@ float myColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 // 윈도우 메시지 처리기 (콜백 함수)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    // ImGui가 입력을 가로채도록 추가
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+        return true;
+
     switch (msg)
     {
     case WM_KEYDOWN:
@@ -380,6 +390,19 @@ void CreateDepthStencilBuffer(ID3D12Device* device, UINT width, UINT height,
                                    (*outDSVHeap)->GetCPUDescriptorHandleForHeapStart());
 }
 
+// 16. ImGui용 SRV 힙 생성 함수 추가
+ID3D12DescriptorHeap* CreateSrvHeapForImGui(ID3D12Device* device)
+{
+    D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+    desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    desc.NumDescriptors = 1;
+    desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+    ID3D12DescriptorHeap* srvHeap;
+    device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&srvHeap));
+    return srvHeap;
+}
+
 // ========================================
 // 렌더링 함수들
 // ========================================
@@ -399,11 +422,11 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
                  ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT], ID3D12DescriptorHeap* rtvHeap,
                  UINT rtvDescriptorSize, ID3D12RootSignature* rootSignature,
                  const D3D12_VERTEX_BUFFER_VIEW* vbView, const D3D12_INDEX_BUFFER_VIEW* ibView,
-                 HWND hwnd, const Mesh& mesh, ID3D12Resource* depthStencilBuffer, ID3D12DescriptorHeap* dsvHeap)
+                 HWND hwnd, const Mesh& mesh, ID3D12Resource* depthStencilBuffer, ID3D12DescriptorHeap* dsvHeap,ID3D12DescriptorHeap* imguiSrvHeap)
 {
     UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
     commandAllocators[backBufferIdx]->Reset();
-    commandList->Reset(commandAllocators[backBufferIdx], pipelineState);
+    commandList->Reset(commandAllocators[backBufferIdx], pipelineState);  // [추가] 이 줄 추가
 
     // 리소스 상태 전환: Present -> RenderTarget
     D3D12_RESOURCE_BARRIER barrier = {};
@@ -460,6 +483,12 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->IASetVertexBuffers(0, 1, vbView);
     commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
 
+    // [추가] ImGui 렌더링 명령 기록
+    ID3D12DescriptorHeap* descriptorHeaps[] = { imguiSrvHeap };
+    commandList->SetDescriptorHeaps(1, descriptorHeaps);
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
+
+
     // 리소스 상태 전환: RenderTarget -> Present
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -493,11 +522,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     Input::Initialize();
     Time::Initialize();
 
+    
     // D3D12 초기화
     EnableDebugLayer();
     ID3D12Device* d3d12Device = CreateD3D12Device();
     ID3D12CommandQueue* commandQueue = CreateCommandQueue(d3d12Device);
     IDXGISwapChain3* swapChain = CreateSwapChain(commandQueue, hwnd);
+
+    
 
     // 렌더 타겟 설정
     UINT rtvDescriptorSize;
@@ -527,6 +559,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     ID3D12RootSignature* rootSignature = CreateRootSignature(d3d12Device);
     ID3D12PipelineState* pipelineState = CreatePipelineState(d3d12Device, rootSignature, vsBlob, psBlob);
 
+
+    // [추가] ImGui용 SRV 힙 생성
+    ID3D12DescriptorHeap* imguiSrvHeap = CreateSrvHeapForImGui(d3d12Device);
+
+    // [추가] ImGui 초기화
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX12_Init(d3d12Device, FRAME_BUFFER_COUNT,
+        DXGI_FORMAT_R8G8B8A8_UNORM, imguiSrvHeap,
+        imguiSrvHeap->GetCPUDescriptorHandleForHeapStart(),
+        imguiSrvHeap->GetGPUDescriptorHandleForHeapStart());
+
+    // [수정] 폰트 아틀라스 빌드 추가
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->Build();
+
+  
+    ImGui_ImplDX12_CreateDeviceObjects();
+  
     // Mesh 초기화
     Mesh mesh;
     mesh.LoadFromOBJ("model.obj");  // OBJ 파일 경로
@@ -561,6 +615,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
         Input::Update();
         float dt = Time::GetDeltaTime();
 
+      
         if (Input::GetKeyDown(eKeyCode::K))
         {
             myColor[0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
@@ -573,10 +628,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
         // 메시 업데이트 (회전)
         mesh.Update(dt);
 
-        // 렌더링
-        RenderFrame(swapChain, commandAllocators, commandList, pipelineState, frameBuffers,
-                    rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, mesh, depthStencilBuffer, dsvHeap);
+        // [추가] ImGui 새 프레임 시작 및 UI 구성
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
 
+   
+
+
+        // 예시 UI: 배경색 변경 컨트롤
+        ImGui::Begin("Settings");
+        ImGui::ColorEdit3("Triangle Color", myColor); // myColor 변수를 ImGui에서 직접 조작
+        ImGui::End();
+
+        ImGui::Render(); // 렌더링 데이터 생성
+
+        // 렌더링 (매개변수로 imguiSrvHeap을 넘기도록 수정 필요)
+        RenderFrame(swapChain, commandAllocators, commandList, pipelineState, frameBuffers,
+            rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, mesh, depthStencilBuffer, dsvHeap, imguiSrvHeap);
+
+
+      
         // GPU에 명령 전송
         ID3D12CommandList* lists[] = { commandList };
         commandQueue->ExecuteCommandLists(1, lists);
@@ -586,7 +658,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 
         // GPU 동기화
         WaitForGPU(commandQueue, fence, fenceValue, fenceEvent);
-    }
+     
 
+    }
+    // [추가] ImGui 정리
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
     return 0;
 }
