@@ -483,7 +483,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->IASetVertexBuffers(0, 1, vbView);
     commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
 
-    // [추가] ImGui 렌더링 명령 기록
+    //  ImGui 렌더링 명령 기록
     ID3D12DescriptorHeap* descriptorHeaps[] = { imguiSrvHeap };
     commandList->SetDescriptorHeaps(1, descriptorHeaps);
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -529,7 +529,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     ID3D12CommandQueue* commandQueue = CreateCommandQueue(d3d12Device);
     IDXGISwapChain3* swapChain = CreateSwapChain(commandQueue, hwnd);
 
-    
 
     // 렌더 타겟 설정
     UINT rtvDescriptorSize;
