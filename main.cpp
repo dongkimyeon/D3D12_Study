@@ -1,38 +1,8 @@
-#define WIN32_LEAN_AND_MEAN // 거의 사용되지 않는 헬퍼 함수들을 제외하여 컴파일 속도를 높임
-#define NOMINMAX            // Windows.h의 min/max 매크로가 std::min/max와 충돌하는 것을 방지
-#define UNICODE             // 유니코드 문자셋 사용
+
 #define DEBUG_BUILD         // 디버그 모드 설정을 위한 정의
 
-#include <windows.h>
-#include <d3d12.h>          // D3D12 핵심 인터페이스
-#include <dxgi1_6.h>        // DirectX Graphics Infrastructure (어댑터 및 스왑체인 관리)
-#include <d3dcompiler.h>    // HLSL 셰이더 컴파일러
-#include <assert.h>         // 오류 검출용
+#include "stdafx.h"
 
-
-#include "OBJLoader.h"
-#include <DirectXMath.h>  // 행렬 연산용
-using namespace DirectX;
-
-#include "imgui.h"
-#include "backends/imgui_impl_dx12.h"   
-#include "backends/imgui_impl_win32.h"
-
-// C++ 표준 라이브러리
-#include <cstdint>
-#include <vector>
-#include <random>
-#include <iostream>
-
-// 사용자 정의 헤더 파일
-#include "Input.h"
-#include "Time.h"
-
-// 라이브러리 링크 (솔루션 설정에서 추가해도 되지만 코드에 명시하는 것이 관리하기 편함)
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
 
 static bool global_windowDidResize = false;
 
@@ -43,8 +13,15 @@ const UINT FRAME_BUFFER_COUNT = 2;
 const UINT MAX_RECT_COUNT = 100; // 최대 사각형 개수 제한 (버퍼 오버플로우 방지)
 
 // 사각형의 상태를 관리하는 구조체
+
+float cameraX = 0.0f, cameraY = 0.0f, cameraZ = -5.0f; // 카메라 위치 초기값
 class Mesh {
 public:
+    Mesh() {
+        x = 0;
+        y = 0;
+        z = 0;
+    }
     std::vector<OBJVertex> vertices;
     std::vector<uint16_t> indices;
     XMMATRIX worldMatrix;
@@ -53,11 +30,22 @@ public:
         OBJLoader::Load(filename, vertices, indices);
         worldMatrix = XMMatrixIdentity();
     }
+    void SetPosition(float newX, float newY, float newZ) {
+        x = newX;
+        y = newY;
+        z = newZ;
+
+        worldMatrix = XMMatrixTranslation(x, y, z);
+    }
+
 
     void Update(float dt) {
         // 회전 애니메이션
-        worldMatrix = XMMatrixRotationY(dt * 0.5f) * worldMatrix;
+        //worldMatrix = XMMatrixRotationY(dt * 0.5f) * worldMatrix;
     }
+private:
+    float x, y, z;
+
 };
 
 float myColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -72,6 +60,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
+        else if(wparam == VK_SPACE) {
+			cameraY += 0.5f;
+		}
+        else if (wparam == VK_CONTROL) {
+			cameraY -= 0.5f;
+        }
+        else if (wparam == 'W') {
+            cameraZ += 0.5f;
+        }
+		else if (wparam == 'S') {
+			cameraZ -= 0.5f;
+        }
+		else if (wparam == 'A') {
+            cameraX -= 0.5f;
+		}
+		else if (wparam == 'D') {
+            cameraX += 0.5f;
+		}
+
+
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -293,7 +301,7 @@ ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignatu
     psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;  // SOLID로 변경
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;  // SOLID로 변경
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;   // BACK으로 변경
     psoDesc.RasterizerState.DepthClipEnable = TRUE;  // 추가
     psoDesc.DepthStencilState.DepthEnable = TRUE;    // 깊이 버퍼 활성화
@@ -422,7 +430,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
                  ID3D12Resource* frameBuffers[FRAME_BUFFER_COUNT], ID3D12DescriptorHeap* rtvHeap,
                  UINT rtvDescriptorSize, ID3D12RootSignature* rootSignature,
                  const D3D12_VERTEX_BUFFER_VIEW* vbView, const D3D12_INDEX_BUFFER_VIEW* ibView,
-                 HWND hwnd, const Mesh& mesh, ID3D12Resource* depthStencilBuffer, ID3D12DescriptorHeap* dsvHeap,ID3D12DescriptorHeap* imguiSrvHeap)
+                 HWND hwnd, const std::vector<Mesh>& all_obj, ID3D12Resource* depthStencilBuffer, ID3D12DescriptorHeap* dsvHeap,ID3D12DescriptorHeap* imguiSrvHeap)
 {
     UINT backBufferIdx = swapChain->GetCurrentBackBufferIndex();
     commandAllocators[backBufferIdx]->Reset();
@@ -461,7 +469,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
 
     // 뷰/프로젝션 행렬 계산
     XMMATRIX view = XMMatrixLookAtLH(
-        XMVectorSet(0, 0, -5, 1),  // 카메라 위치
+        XMVectorSet(cameraX, cameraY, cameraZ, 1) ,  // 카메라 위치
         XMVectorSet(0, 0, 0, 1),   // 타겟
         XMVectorSet(0, 1, 0, 0)    // 업 벡터
     );
@@ -471,7 +479,12 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
         0.1f,
         100.0f
     );
-    XMMATRIX mvp = mesh.worldMatrix * view * proj;
+   
+    XMMATRIX mvp;
+    for (const auto mesh : all_obj) {
+        mvp = mesh.worldMatrix* view* proj;
+    }
+
     XMMATRIX mvpTranspose = XMMatrixTranspose(mvp);
 
     // 루트 상수로 전달
@@ -481,8 +494,19 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     // 버퍼 바인딩 및 그리기
     commandList->IASetIndexBuffer(ibView);
     commandList->IASetVertexBuffers(0, 1, vbView);
-    commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
+    for (const auto& mesh : all_obj) {
+        XMMATRIX mvp = mesh.worldMatrix * view * proj;
+        XMFLOAT4X4 mvpFloat;
+        XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp)); // 행렬은 HLSL에서 Column-major(또는 셰이더 기대 형식)에 맞게 전치해서 전달
 
+        // 컬러(4값) -> 루트 상수 0~3
+        commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+        // 행렬(4x4 = 16값) -> 루트 상수 4~19
+        commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
+
+        commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
+    }
+  
     //  ImGui 렌더링 명령 기록
     ID3D12DescriptorHeap* descriptorHeaps[] = { imguiSrvHeap };
     commandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -583,6 +607,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
     // Mesh 초기화
     Mesh mesh;
     mesh.LoadFromOBJ("model.obj");  // OBJ 파일 경로
+    Mesh temp;
+    temp.LoadFromOBJ("model.obj");  // OBJ 파일 경로
+
+    std::vector<Mesh> meshObjects;
+    for (int i = 0; i < 10; ++i) {
+        meshObjects.push_back(temp);
+        meshObjects.back().SetPosition(i * 1.5f, i * 1.5f, 0.0f);
+    }
+
+
 
     // 버퍼 크기 계산
     UINT maxVertexBufferSize = static_cast<UINT>(mesh.vertices.size() * sizeof(OBJVertex));
@@ -626,7 +660,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 
         // 메시 업데이트 (회전)
         mesh.Update(dt);
-
+        for (auto& rect : meshObjects) {
+            rect.Update(dt);
+        }
         // [추가] ImGui 새 프레임 시작 및 UI 구성
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
@@ -638,13 +674,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
         ImGui::ColorEdit3("Triangle Color", myColor); // myColor 변수를 ImGui에서 직접 조작
         //fps 표시
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate); 
+        //카메라 위치 표시
+		ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", cameraX, cameraY, cameraZ);  
         ImGui::End();
 
         ImGui::Render(); // 렌더링 데이터 생성
 
         // 렌더링 (매개변수로 imguiSrvHeap을 넘기도록 수정 필요)
         RenderFrame(swapChain, commandAllocators, commandList, pipelineState, frameBuffers,
-            rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, mesh, depthStencilBuffer, dsvHeap, imguiSrvHeap);
+            rtvHeap, rtvDescriptorSize, rootSignature, &vbView, &ibView, hwnd, meshObjects, depthStencilBuffer, dsvHeap, imguiSrvHeap);
 
 
       
