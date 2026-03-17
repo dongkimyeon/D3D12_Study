@@ -14,7 +14,7 @@ const UINT MAX_RECT_COUNT = 100; // 최대 사각형 개수 제한 (버퍼 오버플로우 방지)
 
 // 사각형의 상태를 관리하는 구조체
 
-float cameraX = 0.0f, cameraY = 0.0f, cameraZ = -5.0f; // 카메라 위치 초기값
+XMFLOAT3 camPos{ 0, 0, -10 };    
 class Mesh {
 public:
     Mesh() {
@@ -25,7 +25,7 @@ public:
     std::vector<OBJVertex> vertices;
     std::vector<uint16_t> indices;
     XMMATRIX worldMatrix;
-
+    
     void LoadFromOBJ(const std::string& filename) {
         OBJLoader::Load(filename, vertices, indices);
         worldMatrix = XMMatrixIdentity();
@@ -61,22 +61,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
         else if(wparam == VK_SPACE) {
-			cameraY += 0.5f;
+            camPos.y += 0.5f;
 		}
         else if (wparam == VK_CONTROL) {
-			cameraY -= 0.5f;
+            camPos.y -= 0.5f;
         }
         else if (wparam == 'W') {
-            cameraZ += 0.5f;
+            camPos.z += 0.5f;
         }
 		else if (wparam == 'S') {
-			cameraZ -= 0.5f;
+            camPos.z -= 0.5f;
         }
 		else if (wparam == 'A') {
-            cameraX -= 0.5f;
+            camPos.x -= 0.5f;
 		}
 		else if (wparam == 'D') {
-            cameraX += 0.5f;
+            camPos.x += 0.5f;
 		}
 
 
@@ -469,7 +469,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
 
     // 뷰/프로젝션 행렬 계산
     XMMATRIX view = XMMatrixLookAtLH(
-        XMVectorSet(cameraX, cameraY, cameraZ, 1) ,  // 카메라 위치
+        XMVectorSet(camPos.x,camPos.y,camPos.z, 1) ,  // 카메라 위치
         XMVectorSet(0, 0, 0, 1),   // 타겟
         XMVectorSet(0, 1, 0, 0)    // 업 벡터
     );

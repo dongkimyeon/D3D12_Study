@@ -29,7 +29,6 @@ PSInput vs_main(VSInput input)
 
 float4 ps_main(PSInput input) : SV_TARGET
 {
-    // 간단한 조명 계산
     float3 lightDir = normalize(float3(1, 1, -1));
     float ndotl = max(dot(input.normal, lightDir), 0.3f);
     return float4(input.color.rgb * ndotl * color.rgb, 1.0f);
