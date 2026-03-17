@@ -297,7 +297,7 @@ ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignatu
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;  // SOLID로 변경
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;   // BACK으로 변경
     psoDesc.RasterizerState.DepthClipEnable = TRUE;  // 추가
-    psoDesc.DepthStencilState.DepthEnable = FALSE;    // 깊이 버퍼 활성화
+    psoDesc.DepthStencilState.DepthEnable = FALSE;    // 깊이 버퍼 비활성화
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
