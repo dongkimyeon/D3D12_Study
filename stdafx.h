@@ -14,6 +14,8 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <string>
+#include <array>
 
 #include <wrl/client.h>
 #include <windows.h>

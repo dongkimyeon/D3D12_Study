@@ -14,28 +14,41 @@ const UINT MAX_RECT_COUNT = 100; // 최대 사각형 개수 제한 (버퍼 오버플로우 방지)
 
 // 사각형의 상태를 관리하는 구조체
 
-XMFLOAT3 camPos{ 0, 0, -10 };    
+XMFLOAT3 camPos{ 0, 0, -10 };
+float camYaw = 0.0f;   // 좌우 회전 (Y축 기준)
+float camPitch = 0.0f; // 위아래 회전 (X축 기준)
+float moveSpeed = 10.0f;
+float lookSpeed = 0.006f; // 마우스 감도
+
+std::default_random_engine rng(std::random_device{}());
+
+
+
 class Mesh {
 public:
     Mesh() {
-        x = 0;
-        y = 0;
-        z = 0;
+        position.x = 0;
+        position.y = 0;
+        position.z = 0;
+		color = { 1.0f, 1.0f, 1.0f, 1.0f };
     }
+
     std::vector<OBJVertex> vertices;
     std::vector<uint16_t> indices;
     XMMATRIX worldMatrix;
-    
+    std::array<float, 4> color;
+
+
     void LoadFromOBJ(const std::string& filename) {
         OBJLoader::Load(filename, vertices, indices);
         worldMatrix = XMMatrixIdentity();
     }
     void SetPosition(float newX, float newY, float newZ) {
-        x = newX;
-        y = newY;
-        z = newZ;
+        position.x = newX;
+        position.y = newY;
+        position.z  = newZ;
 
-        worldMatrix = XMMatrixTranslation(x, y, z);
+        worldMatrix = XMMatrixTranslation(position.x, position.y, position.z);
     }
 
 
@@ -44,11 +57,11 @@ public:
         //worldMatrix = XMMatrixRotationY(dt * 0.5f) * worldMatrix;
     }
 private:
-    float x, y, z;
-
+    XMFLOAT3 position;
+    
 };
 
-float myColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
 // 윈도우 메시지 처리기 (콜백 함수)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -60,27 +73,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
-        else if(wparam == VK_SPACE) {
-            camPos.y += 0.5f;
-		}
-        else if (wparam == VK_CONTROL) {
-            camPos.y -= 0.5f;
-        }
-        else if (wparam == 'W') {
-            camPos.z += 0.5f;
-        }
-		else if (wparam == 'S') {
-            camPos.z -= 0.5f;
-        }
-		else if (wparam == 'A') {
-            camPos.x -= 0.5f;
-		}
-		else if (wparam == 'D') {
-            camPos.x += 0.5f;
-		}
-
-
-        return 0;
+         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -301,10 +294,10 @@ ID3D12PipelineState* CreatePipelineState(ID3D12Device* device, ID3D12RootSignatu
     psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;  // SOLID로 변경
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;  // SOLID로 변경
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;   // BACK으로 변경
     psoDesc.RasterizerState.DepthClipEnable = TRUE;  // 추가
-    psoDesc.DepthStencilState.DepthEnable = TRUE;    // 깊이 버퍼 활성화
+    psoDesc.DepthStencilState.DepthEnable = FALSE;    // 깊이 버퍼 활성화
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
@@ -384,7 +377,7 @@ void CreateDepthStencilBuffer(ID3D12Device* device, UINT width, UINT height,
     clearValue.Format = DXGI_FORMAT_D32_FLOAT;
     clearValue.DepthStencil.Depth = 1.0f;
     clearValue.DepthStencil.Stencil = 0;
-
+    
     device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, 
                                     D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, 
                                     IID_PPV_ARGS(outDepthStencilBuffer));
@@ -467,11 +460,18 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
     commandList->SetGraphicsRootSignature(rootSignature);
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // 뷰/프로젝션 행렬 계산
-    XMMATRIX view = XMMatrixLookAtLH(
-        XMVectorSet(camPos.x,camPos.y,camPos.z, 1) ,  // 카메라 위치
-        XMVectorSet(0, 0, 0, 1),   // 타겟
-        XMVectorSet(0, 1, 0, 0)    // 업 벡터
+    // RenderFrame 함수 내부의 뷰 행렬 계산 부분
+    XMVECTOR currentPos = XMLoadFloat3(&camPos);
+
+    // 현재 회전값 반영
+    XMMATRIX camRot = XMMatrixRotationRollPitchYaw(camPitch, camYaw, 0);
+    XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), camRot);
+
+    // LookAt 대신 LookTo를 사용하세요!
+    XMMATRIX view = XMMatrixLookToLH(
+        currentPos,              // 카메라 위치
+        forward,                 // 바라보는 방향 벡터
+        XMVectorSet(0, 1, 0, 0)  // 위쪽 방향 (월드 Up)
     );
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
         XM_PIDIV4,
@@ -487,8 +487,8 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
 
     XMMATRIX mvpTranspose = XMMatrixTranspose(mvp);
 
-    // 루트 상수로 전달
-    commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+   
+
     commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpTranspose, 4);
 
     // 버퍼 바인딩 및 그리기
@@ -500,7 +500,7 @@ void RenderFrame(IDXGISwapChain3* swapChain, ID3D12CommandAllocator* commandAllo
         XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp)); // 행렬은 HLSL에서 Column-major(또는 셰이더 기대 형식)에 맞게 전치해서 전달
 
         // 컬러(4값) -> 루트 상수 0~3
-        commandList->SetGraphicsRoot32BitConstants(0, 4, myColor, 0);
+        commandList->SetGraphicsRoot32BitConstants(0, 4, mesh.color.data(), 0);
         // 행렬(4x4 = 16값) -> 루트 상수 4~19
         commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
 
@@ -612,8 +612,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 
     std::vector<Mesh> meshObjects;
     for (int i = 0; i < 10; ++i) {
+		temp.color = { rng() % 256 / 255.0f, rng() % 256 / 255.0f, rng() % 256 / 255.0f, 1.0f }; // 예시 색상
         meshObjects.push_back(temp);
-        meshObjects.back().SetPosition(i * 1.5f, i * 1.5f, 0.0f);
+        meshObjects.back().SetPosition(i * 3.0f, 0.0f, 0.0f);
     }
 
 
@@ -642,21 +643,68 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
             DispatchMessageW(&msg);
             continue;
         }
+        ImGuiIO& io = ImGui::GetIO(); // ImGui IO 상태 가져오기
 
-        // 시간 및 입력 업데이트
-        Time::Update();
-        Input::Update();
-        float dt = Time::GetDeltaTime();
+        static POINT prevMousePos;
+        static bool isRotating = false;
 
       
-        if (Input::GetKeyDown(eKeyCode::K))
-        {
-            myColor[0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-            myColor[1] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-            myColor[2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        // 시간 및 입력 업데이트
+        Time::Update();
+        Input::Update();    
+        // 메인 루프 내부 업데이트 섹션
+        float dt = Time::GetDeltaTime();
 
-            std::cout << "R: " << myColor[0] << " G: " << myColor[1] << " B: " << myColor[2] << std::endl;
+        // 1. 마우스 우클릭 로직 (회전)
+        if (!io.WantCaptureMouse && Input::GetKey(eKeyCode::LButton))
+        {
+            POINT currMousePos;
+            GetCursorPos(&currMousePos);
+
+            if (!isRotating) {
+                prevMousePos = currMousePos;
+                isRotating = true;
+            }
+
+            // 마우스 이동량(Delta) 계산
+            float dx = static_cast<float>(currMousePos.x - prevMousePos.x);
+            float dy = static_cast<float>(currMousePos.y - prevMousePos.y);
+
+            camYaw += dx * lookSpeed;
+            camPitch += dy * lookSpeed;
+
+            const float limit = XM_PIDIV2 - 0.1f;
+            if (camPitch > limit) camPitch = limit;
+            if (camPitch < -limit) camPitch = -limit;
+
+            prevMousePos = currMousePos;
         }
+        else
+        {
+            isRotating = false;
+        }
+
+        // 2. 방향 벡터 계산
+        XMMATRIX camRotation = XMMatrixRotationRollPitchYaw(camPitch, camYaw, 0);
+
+        // 로컬 방향(0,0,1)을 회전 행렬로 변환하여 전방/우측 벡터 추출
+        XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), camRotation);
+        XMVECTOR right = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), camRotation);
+        XMVECTOR up = XMVectorSet(0, 1, 0, 0); // 월드 기준 Up
+
+        // 3. 키보드 이동 (바라보는 방향 기준)
+        XMVECTOR pos = XMLoadFloat3(&camPos);
+
+        if (Input::GetKey(eKeyCode::W)) pos += forward * moveSpeed * dt;
+        if (Input::GetKey(eKeyCode::S)) pos -= forward * moveSpeed * dt;
+        if (Input::GetKey(eKeyCode::D)) pos += right * moveSpeed * dt;
+        if (Input::GetKey(eKeyCode::A)) pos -= right * moveSpeed * dt;
+        if (Input::GetKey(eKeyCode::E)) pos += up * moveSpeed * dt;
+        if (Input::GetKey(eKeyCode::Q)) pos -= up * moveSpeed * dt;
+
+        XMStoreFloat3(&camPos, pos);
+  
+ 
 
         // 메시 업데이트 (회전)
         mesh.Update(dt);
@@ -671,11 +719,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
    
         //  배경색 변경 컨트롤
         ImGui::Begin("Settings");
-        ImGui::ColorEdit3("Triangle Color", myColor); // myColor 변수를 ImGui에서 직접 조작
+        //ImGui::ColorEdit3("Triangle Color", myColor); // myColor 변수를 ImGui에서 직접 조작
         //fps 표시
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate); 
         //카메라 위치 표시
-		ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", cameraX, cameraY, cameraZ);  
+		ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", camPos.x, camPos.y, camPos.z);  
         ImGui::End();
 
         ImGui::Render(); // 렌더링 데이터 생성
