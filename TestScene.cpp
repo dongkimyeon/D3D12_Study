@@ -19,7 +19,7 @@ TestScene::~TestScene()
 
 void TestScene::Initialize()
 {
-    // 10개의 큐브를 생성하여 리스트에 등록 (가로로 배치)
+ 
     for (int i = 0; i < 10; ++i)
     {
         GameObject* cube = new GameObject();

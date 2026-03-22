@@ -3,6 +3,10 @@
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     // ImGui가 입력을 캡처하도록
@@ -34,7 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
     RegisterClassExW(&winClass);
 
-    RECT initialRect = { 0, 0, 1280, 720 };
+    RECT initialRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
 
     HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"D3D12 Study Engine",
@@ -45,7 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     ShowWindow(hwnd, nCmdShow);
 
     // 프레임워크 구동
-    Framework framework(1280, 720);
+    Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
     framework.Initialize(hwnd);
     framework.Run();
 
