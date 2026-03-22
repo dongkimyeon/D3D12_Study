@@ -20,16 +20,27 @@ TestScene::~TestScene()
 
 void TestScene::Initialize()
 {
-    for (int i = 0; i < 10; ++i)
+    int gridSize = 3;       // 3x3x3 형태로 총 27개의 큐브 생성
+    float spacing = 3.0f;   // 큐브 사이의 간격
+
+    for (int x = 0; x < gridSize; ++x)
     {
-        // GameObject 대신 Cube 객체를 생성합니다. (다형성 활용)
-        GameObject* cube = new Cube();
+        for (int y = 0; y < gridSize; ++y)
+        {
+            for (int z = 0; z < gridSize; ++z)
+            {
+                GameObject* cube = new Cube();
+                cube->Initialize(Framework::GetDevice());
 
-        // 오버라이딩된 Initialize를 호출해 내부적으로 "model.obj"를 로드하도록 지시
-        cube->Initialize(Framework::GetDevice());
-        cube->SetPosition(i * 3.0f, 0.0f, 0.0f);
+                // 전체 큐브 무리의 중심이 원점(0, 0, 0)이 되도록 좌표 오프셋 계산
+                float posX = (x - (gridSize - 1) / 2.0f) * spacing;
+                float posY = (y - (gridSize - 1) / 2.0f) * spacing;
+                float posZ = (z - (gridSize - 1) / 2.0f) * spacing;
 
-        mGameObjects.push_back(cube);
+                cube->SetPosition(posX, posY, posZ);
+                mGameObjects.push_back(cube);
+            }
+        }
     }
 }
 
@@ -68,6 +79,9 @@ void TestScene::Update(float dt)
     if (Input::GetKey(eKeyCode::A)) pos -= right * moveSpeed * dt;
     if (Input::GetKey(eKeyCode::E)) pos += up * moveSpeed * dt;
     if (Input::GetKey(eKeyCode::Q)) pos -= up * moveSpeed * dt;
+
+	if (Input::GetKeyDown(eKeyCode::SHIFT)) moveSpeed *= 2.0f;
+    if (Input::GetKeyUp(eKeyCode::SHIFT)) moveSpeed /= 2.0f;
 
     XMStoreFloat3(&camPos, pos);
 
