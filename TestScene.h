@@ -16,7 +16,6 @@ public:
 
 private:
     std::vector<GameObject*> mGameObjects;
-    std::default_random_engine rng;
 
     // 카메라 관련 
     XMFLOAT3 camPos;

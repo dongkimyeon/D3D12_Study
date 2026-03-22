@@ -123,7 +123,7 @@ void Framework::Render()
     SceneManager::Render(mCommandList);
     // ============================================
 
-    // ImGui 렌더 코맨드 기록
+    // ImGui 렌더 커맨드 기록
     ImGui::Render();
     ID3D12DescriptorHeap* descriptorHeaps[] = { mImGuiSrvHeap.Get() };
     mCommandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -277,10 +277,9 @@ void Framework::CompileShaders()
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 
-    // =============== 수정된 부분 ===============
-    // (기존 main.cpp와 동작 일치를 위해 DepthEnable = FALSE로 유지)
+
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
     // ===========================================
 
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;

@@ -10,15 +10,17 @@ public:
     virtual void Initialize(ComPtr<ID3D12Device> device);
     virtual void Update(float dt);
 
-    // View, Proj 행렬을 받아오도록 구성
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
 
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
     void SetPosition(float x, float y, float z);
 
+protected:
+    // 정점 데이터를 VRAM 버퍼에 새로 업데이트하는 함수
+    void UpdateVertexBuffer();
+
 public:
     XMFLOAT3 position;
-    std::array<float, 4> color;
 
 protected:
     std::vector<OBJVertex> vertices;

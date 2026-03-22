@@ -1,9 +1,10 @@
 #include "stdafx.h"
 #include "TestScene.h"
+#include "Cube.h" // <== 새로 만든 Cube 헤더 추가
 
 TestScene::TestScene()
 {
-    rng.seed(std::random_device{}());
+
     camPos = { 0, 0, -10 };
     camYaw = 0.0f;
     camPitch = 0.0f;
@@ -19,14 +20,13 @@ TestScene::~TestScene()
 
 void TestScene::Initialize()
 {
- 
     for (int i = 0; i < 10; ++i)
     {
-        GameObject* cube = new GameObject();
+        // GameObject 대신 Cube 객체를 생성합니다. (다형성 활용)
+        GameObject* cube = new Cube();
 
-        // 싱글톤으로 제공되는 Device를 통해 버퍼 생성 로드
-        cube->LoadFromOBJ("model.obj", Framework::GetDevice());
-        cube->color = { rng() % 256 / 255.0f, rng() % 256 / 255.0f, rng() % 256 / 255.0f, 1.0f };
+        // 오버라이딩된 Initialize를 호출해 내부적으로 "model.obj"를 로드하도록 지시
+        cube->Initialize(Framework::GetDevice());
         cube->SetPosition(i * 3.0f, 0.0f, 0.0f);
 
         mGameObjects.push_back(cube);
@@ -71,7 +71,7 @@ void TestScene::Update(float dt)
 
     XMStoreFloat3(&camPos, pos);
 
-    // 3. 오브젝트들 업데이트
+    // 3. 오브젝트들 업데이트 (다형성 활용)
     for (auto obj : mGameObjects) {
         obj->Update(dt);
     }
@@ -86,7 +86,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     XMMATRIX view = XMMatrixLookToLH(currentPos, forward, XMVectorSet(0, 1, 0, 0));
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
 
-    // 활성화된 오브젝트들을 모두 드로우
+    // 활성화된 오브젝트들을 모두 드로우 (다형성 활용)
     for (auto obj : mGameObjects) {
         obj->Render(commandList, view, proj);
     }

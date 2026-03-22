@@ -4,7 +4,6 @@
 GameObject::GameObject()
 {
     position = { 0, 0, 0 };
-    color = { 1.0f, 1.0f, 1.0f, 1.0f };
     worldMatrix = XMMatrixIdentity();
 }
 
@@ -31,7 +30,7 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
     XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp));
 
     // 색상과 변환행렬을 루트 상수로 전달 (루트 파라미터가 0 인덱스 배열 하나로 구성되어 있다고 가정)
-    commandList->SetGraphicsRoot32BitConstants(0, 4, color.data(), 0);
+    //commandList->SetGraphicsRoot32BitConstants(0, 4, color.data(), 0);
     commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
 
     commandList->IASetVertexBuffers(0, 1, &vbView);
@@ -51,14 +50,12 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
     device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &vRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer));
 
-    void* vData;
-    vertexBuffer->Map(0, nullptr, &vData);
-    memcpy(vData, vertices.data(), vertices.size() * sizeof(OBJVertex));
-    vertexBuffer->Unmap(0, nullptr);
-
     vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
     vbView.StrideInBytes = sizeof(OBJVertex);
     vbView.SizeInBytes = maxVertexBufferSize;
+
+    // 데이터를 바로 업로드합니다.
+    UpdateVertexBuffer();
 
     // ---------------------------------
     // 인덱스 버퍼 생성
@@ -75,6 +72,19 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
     ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
     ibView.Format = DXGI_FORMAT_R16_UINT;
     ibView.SizeInBytes = maxIndexBufferSize;
+}
+
+
+void GameObject::UpdateVertexBuffer()
+{
+    if (vertexBuffer && !vertices.empty())
+    {
+        void* vData;
+        // 업로드 힙이므로 직접 Map하여 갱신 가능합니다.
+        vertexBuffer->Map(0, nullptr, &vData);
+        memcpy(vData, vertices.data(), vertices.size() * sizeof(OBJVertex));
+        vertexBuffer->Unmap(0, nullptr);
+    }
 }
 
 void GameObject::SetPosition(float x, float y, float z)
