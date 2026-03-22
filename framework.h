@@ -1,82 +1,58 @@
 #pragma once
-
 #include "stdafx.h"
 
-class framework
+class Framework
 {
 public:
-	framework(UINT windowWidth, UINT windowHeight);
-	~framework();
+    Framework(int width = 1280, int height = 720);
+    virtual ~Framework();
 
-	void OnCreate(HINSTANCE hInstance, HWND hWnd);
-	void OnDestroy();
+    void Initialize(HWND hwnd);
+    void Run();
+    void Release();
 
-	void FrameAdvance();
-
-	void MouseEvent(HWND hWnd, FLOAT timeElapsed);
-	void KeyboardEvent(FLOAT timeElapsed);
-	void MouseEvent(UINT message, LPARAM lParam);
-	void KeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-
-	void SetActive(BOOL isActive);
-
-	FLOAT GetAspectRatio();
-	UINT GetWindowWidth();
-	UINT GetWindowHeight();
+    // 씬 등 외부에서 사용할 Device 정적 접근자
+    static ComPtr<ID3D12Device> GetDevice() { return mDevice; }
 
 private:
-	void InitDirect3D();
-	void CreateDevice();
-	void CreateFence();
-	void Check4xMSAAMultiSampleQuality();
-	void CreateCommandQueueAndList();
-	void CreateSwapChain();
-	void CreateRtvDsvDescriptorHeap();
-	void CreateRenderTargetView();
-	void CreateDepthStencilView();
-	void CreateRootSignature();
+    void InitDirect3D();
+    void CreateCommandQueueAndList();
+    void CreateSwapChain();
+    void CreateRtvDsvDescriptorHeap();
+    void CreateFrameBuffers();
+    void CreateDepthStencilView();
+    void CreateSyncObjects();
+    void CompileShaders();
+    void CreateImGuiSrvHeap();
 
-	void BuildObjects();
-	void WaitForGpuComplete();
-
-	void Update();
-	void Render();
+    void WaitForGPU();
+    void Update();
+    void Render();
 
 private:
-	const static INT SwapChainBufferCount = 2;
+    int mWindowWidth;
+    int mWindowHeight;
+    bool isRunning = false;
+    HWND mHwnd;
 
-	BOOL								m_activate;
+    static ComPtr<ID3D12Device> mDevice; // Static으로 변경하여 편의성 향상
+    static const UINT FRAME_BUFFER_COUNT = 2;
 
-	HINSTANCE							m_hInstance;
-	HWND								m_hWnd;
-	UINT								m_windowWidth;
-	UINT								m_windowHeight;
-	FLOAT								m_aspectRatio;
+    ComPtr<IDXGIFactory4> mDxgiFactory;
+    ComPtr<IDXGISwapChain3> mSwapChain;
+    ComPtr<ID3D12CommandQueue> mCommandQueue;
+    ComPtr<ID3D12DescriptorHeap> mRtvHeap;
+    ComPtr<ID3D12DescriptorHeap> mDsvHeap;
+    ComPtr<ID3D12Resource> mFrameBuffers[FRAME_BUFFER_COUNT];
+    ComPtr<ID3D12Resource> mDepthStencilBuffer;
+    ComPtr<ID3D12CommandAllocator> mCommandAllocators[FRAME_BUFFER_COUNT];
+    ComPtr<ID3D12GraphicsCommandList> mCommandList;
+    ComPtr<ID3D12Fence> mFence;
+    ComPtr<ID3D12RootSignature> mRootSignature;
+    ComPtr<ID3D12PipelineState> mPipelineState;
+    ComPtr<ID3D12DescriptorHeap> mImGuiSrvHeap;
 
-	D3D12_VIEWPORT						m_viewport;
-	D3D12_RECT							m_scissorRect;
-	ComPtr<IDXGIFactory4>				m_factory;
-	ComPtr<IDXGISwapChain3>				m_swapChain;
-	ComPtr<ID3D12Device>				m_device;
-	INT									m_MSAA4xQualityLevel;
-	ComPtr<ID3D12CommandAllocator>		m_commandAllocator;
-	ComPtr<ID3D12CommandQueue>			m_commandQueue;
-	ComPtr<ID3D12GraphicsCommandList>	m_commandList;
-	ComPtr<ID3D12Resource>				m_renderTargets[SwapChainBufferCount];
-	ComPtr<ID3D12DescriptorHeap>		m_rtvHeap;
-	UINT								m_rtvDescriptorSize;
-	ComPtr<ID3D12Resource>				m_depthStencil;
-	ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
-	ComPtr<ID3D12RootSignature>			m_rootSignature;
-
-	ComPtr<ID3D12Fence>					m_fence;
-	UINT								m_frameIndex;
-	UINT64								m_fenceValue;
-	HANDLE								m_fenceEvent;
-
-	//Timer								m_timer;
-
-	//unique_ptr<Scene>					m_scene;
-
+    UINT mRtvDescriptorSize = 0;
+    HANDLE mFenceEvent = nullptr;
+    UINT64 mFenceValue = 0;
 };
-
