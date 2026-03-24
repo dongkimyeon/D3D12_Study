@@ -80,7 +80,7 @@ void Framework::Update()
 {
     Time::Update();
     Input::Update();
-
+    Camera::Update(Time::GetDeltaTime());
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -115,7 +115,6 @@ void Framework::Render()
     mCommandList->RSSetViewports(1, &vp);
     mCommandList->RSSetScissorRects(1, &scissor);
 
-    // 루트 시그니처와 기본 토폴로지는 프레임워크 단에서 장착
     mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
     mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

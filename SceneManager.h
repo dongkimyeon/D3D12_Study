@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "Scene.h"
+#include "Camera.h"
 #include <map>
 
 class SceneManager
@@ -28,4 +29,5 @@ public:
 private:
 	static std::map<std::wstring, Scene*> mScenes;
 	static Scene* mActiveScene;
+
 };

@@ -6,9 +6,12 @@
 std::map<std::wstring, Scene*> SceneManager::mScenes;
 Scene* SceneManager::mActiveScene = nullptr;
 
+
+
 void SceneManager::Initialize()
 {
 	Time::Initialize();
+	
 	Input::Initialize();
 }
 
@@ -32,7 +35,7 @@ void SceneManager::Update()
 	{
 		// 프레임 전역 델타 타임을 넘겨줌
 		mActiveScene->Update(Time::GetDeltaTime());
-
+		
 		if (Input::GetKeyDown(eKeyCode::ESC))
 		{
 			Release();

@@ -17,12 +17,5 @@ public:
 private:
     std::vector<GameObject*> mGameObjects;
 
-    // 카메라 관련 
-    XMFLOAT3 camPos;
-    float camYaw;
-    float camPitch;
-    float moveSpeed;
-    float lookSpeed;
-    bool isRotating;
-    POINT prevMousePos;
+ 
 };

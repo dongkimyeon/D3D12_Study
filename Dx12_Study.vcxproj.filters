@@ -37,6 +37,12 @@
     <Filter Include="GameObject\Cube">
       <UniqueIdentifier>{18bd4bd9-21c1-4528-82b7-905d64b496d1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject\Gizumo">
+      <UniqueIdentifier>{c39651e8-23f2-4cf6-bc3d-07dce122cc31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Camera">
+      <UniqueIdentifier>{7f9d38df-72b5-4c15-b4e0-89afa3df2c3a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -92,6 +98,12 @@
     </ClCompile>
     <ClCompile Include="Cube.cpp">
       <Filter>GameObject\Cube</Filter>
+    </ClCompile>
+    <ClCompile Include="Gizumo.cpp">
+      <Filter>GameObject\Gizumo</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Camera</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +169,12 @@
     </ClInclude>
     <ClInclude Include="Cube.h">
       <Filter>GameObject\Cube</Filter>
+    </ClInclude>
+    <ClInclude Include="Gizumo.h">
+      <Filter>GameObject\Gizumo</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Camera</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

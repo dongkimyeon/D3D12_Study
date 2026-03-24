@@ -4,8 +4,8 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
+#define WINDOW_WIDTH 1280   
+#define WINDOW_HEIGHT 720
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -34,14 +34,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     winClass.lpfnWndProc = WndProc;
     winClass.hInstance = hInstance;
     winClass.hCursor = LoadCursor(0, IDC_ARROW);
-    winClass.lpszClassName = L"D3D12WindowClass";
+    winClass.lpszClassName = L"DirectX_12";
 
     RegisterClassExW(&winClass);
 
     RECT initialRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
 
-    HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"D3D12 Study Engine",
+    HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"DirectX_12",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
         initialRect.right - initialRect.left, initialRect.bottom - initialRect.top,
         0, 0, hInstance, 0);
