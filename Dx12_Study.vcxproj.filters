@@ -43,6 +43,12 @@
     <Filter Include="Camera">
       <UniqueIdentifier>{7f9d38df-72b5-4c15-b4e0-89afa3df2c3a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Framework">
+      <UniqueIdentifier>{367aa68c-c4c9-4a01-9fbd-152d0551d7c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameObject\ObjLoader">
+      <UniqueIdentifier>{1535d0d0-03f2-4e7b-b384-b63e8c1c1451}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -75,9 +81,6 @@
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp">
       <Filter>Helpers\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="Framework.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="SceneManager.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
@@ -93,9 +96,6 @@
     <ClCompile Include="Scene.cpp">
       <Filter>Scene\SceneHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="OBJLoader.cpp">
-      <Filter>GameObject</Filter>
-    </ClCompile>
     <ClCompile Include="Cube.cpp">
       <Filter>GameObject\Cube</Filter>
     </ClCompile>
@@ -104,6 +104,12 @@
     </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Framework.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="OBJLoader.cpp">
+      <Filter>GameObject\ObjLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -115,9 +121,6 @@
     </ClInclude>
     <ClInclude Include="d3dx12.h">
       <Filter>Helpers</Filter>
-    </ClInclude>
-    <ClInclude Include="OBJLoader.h">
-      <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui.h">
       <Filter>Helpers\imgui</Filter>
@@ -142,9 +145,6 @@
     </ClInclude>
     <ClInclude Include="imgui\backends\imgui_impl_win32.h">
       <Filter>Helpers\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Framework.h">
-      <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
@@ -175,6 +175,12 @@
     </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Framework.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="OBJLoader.h">
+      <Filter>GameObject\ObjLoader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

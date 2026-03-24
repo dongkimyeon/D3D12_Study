@@ -63,7 +63,7 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
     D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1,
                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
     device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &iRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBuffer));
-
+    
     void* iData;
     indexBuffer->Map(0, nullptr, &iData);
     memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));

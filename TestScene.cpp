@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "TestScene.h"
 #include "Cube.h" // <== 새로 만든 Cube 헤더 추가
+#include "framework.h"
 #include "Camera.h"
+
 TestScene::TestScene()
 {
 
