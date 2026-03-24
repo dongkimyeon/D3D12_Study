@@ -74,6 +74,80 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     ImGui::Begin("Settings");
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
+
+	// 오브젝트 목록에서 Plane 타입 찾기
+	for (auto obj : mGameObjects)
+	{
+		Plane* plane = dynamic_cast<Plane*>(obj);
+		if (plane != nullptr)
+		{
+			XMFLOAT3 pos = plane->position;
+		
+			if (ImGui::DragFloat3("Plane Position", &pos.x, 0.1f))
+			{
+				// 위치와 월드 매트릭스를 함께 갱신해줌
+				plane->SetPosition(pos.x, pos.y, pos.z);
+			}
+			break; 
+		}
+	}
+
+	ImGui::End();
+
+	ImGui::Begin("Object Control");
+
+	// 1. 오브젝트 선택 리스트 생성
+	int cubeDisplayCount = 0; 
+	if (ImGui::BeginListBox("Cube List"))
+	{
+		for (int i = 0; i < mGameObjects.size(); ++i)
+		{
+			// 큐브 타입만 골라서 리스트에 표시
+			Cube* cube = dynamic_cast<Cube*>(mGameObjects[i]);
+			if (cube)
+			{
+				char label[32];
+				sprintf_s(label, "Cube %d (Index: %d)", cubeDisplayCount++, i);
+
+				// 리스트 아이템 클릭 시 mSelectedIndex 업데이트
+				bool isSelected = (mSelectedIndex == i);
+				if (ImGui::Selectable(label, isSelected))
+				{
+					mSelectedIndex = i;
+				}
+
+				// 포커스 설정 (선택된 항목으로 스크롤)
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndListBox();
+	}
+
+	ImGui::Separator();
+
+	// 2. 선택된 큐브의 데이터 수정
+	if (mSelectedIndex != -1)
+	{
+		GameObject* selectedObj = mGameObjects[mSelectedIndex];
+		XMFLOAT3 pos = selectedObj->position; 
+		XMFLOAT3 rot = selectedObj->rotation; 
+		ImGui::Text("Editing: Cube %d", mSelectedIndex);
+		if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
+		{
+			selectedObj->SetPosition(pos.x, pos.y, pos.z);
+		}
+		if (ImGui::DragFloat3("Rotation", &rot.x, 0.1f))
+		{
+			selectedObj->SetRotation(rot.x, rot.y, rot.z);
+		}
+	}
+	else
+	{
+		ImGui::Text("Select a cube from the list.");
+	}
+
+
     ImGui::End();
 }
 

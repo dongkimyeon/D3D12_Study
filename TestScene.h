@@ -15,6 +15,6 @@ public:
 
 private:
     std::vector<GameObject*> mGameObjects;
-
+	int mSelectedIndex = -1; // -1은 아무것도 선택되지 않음, 0 이상은 인덱스
  
 };

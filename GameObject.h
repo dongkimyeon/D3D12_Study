@@ -14,6 +14,7 @@ public:
 
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
     void SetPosition(float x, float y, float z);
+	void SetRotation(float pitch, float yaw, float roll);
 
 protected:
     // 정점 데이터를 VRAM 버퍼에 새로 업데이트하는 함수
@@ -21,6 +22,7 @@ protected:
 
 public:
     XMFLOAT3 position;
+	XMFLOAT3 rotation;
 
 protected:
     std::vector<OBJVertex> vertices;

@@ -54,8 +54,8 @@ void Cube::Update(float dt)
 {
     GameObject::Update(dt);
     
-	XMMATRIX rotY = XMMatrixRotationY(dt);
-	worldMatrix = rotY * worldMatrix;
+	//XMMATRIX rotY = XMMatrixRotationY(dt);
+	//worldMatrix = rotY * worldMatrix;
 }
 
 void Cube::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)

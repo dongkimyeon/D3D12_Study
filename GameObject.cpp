@@ -89,6 +89,25 @@ void GameObject::UpdateVertexBuffer()
 
 void GameObject::SetPosition(float x, float y, float z)
 {
-    position = { x, y, z };
-    worldMatrix = XMMatrixTranslation(x, y, z);
+	position = { x, y, z };
+
+	// 현재 저장된 회전값을 함께 적용하여 월드 매트릭스 갱신
+	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
+	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
+	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
+
+	worldMatrix = rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
+}
+
+void GameObject::SetRotation(float pitch, float yaw, float roll)
+{
+	// 변경된 회전값을 멤버 변수에 저장 
+	rotation = { pitch, yaw, roll };
+
+	// 현재 위치값과 재계산된 회전값을 반영하여 월드 매트릭스 갱신
+	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
+	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
+	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
+
+	worldMatrix = rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
 }
