@@ -16,6 +16,9 @@ public:
     void SetPosition(float x, float y, float z);
 	void SetRotation(float pitch, float yaw, float roll);
 
+	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
+
+
 protected:
     // 정점 데이터를 VRAM 버퍼에 새로 업데이트하는 함수
     void UpdateVertexBuffer();
@@ -33,4 +36,14 @@ protected:
     ComPtr<ID3D12Resource> indexBuffer;
     D3D12_VERTEX_BUFFER_VIEW vbView;
     D3D12_INDEX_BUFFER_VIEW ibView;
+
+
+
+	// 노멀 라인 렌더링을 위한 멤버 변수들
+	ComPtr<ID3D12Resource> normalVertexBuffer;
+	ComPtr<ID3D12Resource> normalIndexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW normalVbView = {};
+	D3D12_INDEX_BUFFER_VIEW normalIbView = {};
+	UINT normalIndexCount = 0;
+
 };

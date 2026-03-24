@@ -53,6 +53,9 @@ void Plane::Initialize(ComPtr<ID3D12Device> device)
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 	ibView.Format = DXGI_FORMAT_R16_UINT;
 	ibView.SizeInBytes = indexBufferSize;
+
+	BuildNormalBuffer(device);
+
 }
 
 void Plane::Update(float dt)

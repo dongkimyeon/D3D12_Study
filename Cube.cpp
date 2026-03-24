@@ -48,6 +48,7 @@ void Cube::Initialize(ComPtr<ID3D12Device> device)
 
     // 변경된 데이터를 VRAM에 다시 업로드
     UpdateVertexBuffer();
+	BuildNormalBuffer(device);
 }
 
 void Cube::Update(float dt)
