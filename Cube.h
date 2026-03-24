@@ -10,10 +10,10 @@ public:
     virtual void Initialize(ComPtr<ID3D12Device> device) override;
     virtual void Update(float dt) override;
 
-    // Render ÇÔ¼ö ¿À¹ö¶óÀÌµù Ãß°¡
+    // Render í•¨ìˆ˜ ì˜¤ë²„ë¼ì´ë”© ì¶”ê°€
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
 
 private:
-    // Å¥ºê °íÀ¯ÀÇ »ö»ó (·£´ıÀ¸·Î °áÁ¤)
+    // íë¸Œ ê³ ìœ ì˜ ìƒ‰ìƒ (ëœë¤ìœ¼ë¡œ ê²°ì •)
 	std::array<float, 4> color;
 };

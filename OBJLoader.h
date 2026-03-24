@@ -3,9 +3,9 @@
 #include <string>
 
 struct OBJVertex {
-    float x, y, z;       // À§Ä¡
-    float nx, ny, nz;    // ³ë¸Ö
-    float r, g, b, a;    // »ö»ó
+    float x, y, z;       // ìœ„ì¹˜
+    float nx, ny, nz;    // ë…¸ë©€
+    float r, g, b, a;    // ìƒ‰ìƒ
 };
 
 class OBJLoader {

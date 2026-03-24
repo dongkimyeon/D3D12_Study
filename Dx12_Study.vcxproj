@@ -155,6 +155,7 @@
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
+    <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="TestScene.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="LoadScene.h" />
     <ClInclude Include="OBJLoader.h" />
+    <ClInclude Include="Plane.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="stdafx.h" />

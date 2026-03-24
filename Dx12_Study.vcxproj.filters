@@ -49,6 +49,9 @@
     <Filter Include="GameObject\ObjLoader">
       <UniqueIdentifier>{1535d0d0-03f2-4e7b-b384-b63e8c1c1451}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject\Plane">
+      <UniqueIdentifier>{09dca376-50e3-4b4e-bd9f-97749b180874}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -110,6 +113,9 @@
     </ClCompile>
     <ClCompile Include="OBJLoader.cpp">
       <Filter>GameObject\ObjLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="Plane.cpp">
+      <Filter>GameObject\Plane</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -181,6 +187,9 @@
     </ClInclude>
     <ClInclude Include="OBJLoader.h">
       <Filter>GameObject\ObjLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="Plane.h">
+      <Filter>GameObject\Plane</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

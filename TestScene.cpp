@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TestScene.h"
-#include "Cube.h" // <== »õ·Î ¸¸µç Cube Çì´õ Ãß°¡
+#include "Cube.h"
+#include "Plane.h"
 #include "framework.h"
 #include "Camera.h"
 
@@ -15,8 +16,15 @@ TestScene::~TestScene()
 
 void TestScene::Initialize()
 {
-    int gridSize = 3;       // 3x3x3 ÇüÅÂ·Î ÃÑ 27°³ÀÇ Å¥ºê »ı¼º
-    float spacing = 3.0f;   // Å¥ºê »çÀÌÀÇ °£°İ
+	// ============================================
+
+	GameObject* floorPlane = new Plane();
+	floorPlane->Initialize(Framework::GetDevice());
+	floorPlane->SetPosition(0.0f, -5.0f, 0.0f); // íë¸Œ ë¬´ë¦¬ ì•„ë˜ìª½(-5.0f)ì— ë°°ì¹˜
+	mGameObjects.push_back(floorPlane);
+
+    int gridSize = 3;       // 3x3x3 í˜•íƒœë¡œ ì´ 27ê°œì˜ íë¸Œ ìƒì„±
+    float spacing = 3.0f;   // íë¸Œ ì‚¬ì´ì˜ ê°„ê²©
 
     for (int x = 0; x < gridSize; ++x)
     {
@@ -27,7 +35,7 @@ void TestScene::Initialize()
                 GameObject* cube = new Cube();
                 cube->Initialize(Framework::GetDevice());
 
-                // ÀüÃ¼ Å¥ºê ¹«¸®ÀÇ Áß½ÉÀÌ ¿øÁ¡(0, 0, 0)ÀÌ µÇµµ·Ï ÁÂÇ¥ ¿ÀÇÁ¼Â °è»ê
+                // ì „ì²´ íë¸Œ ë¬´ë¦¬ì˜ ì¤‘ì‹¬ì´ ì›ì (0, 0, 0)ì´ ë˜ë„ë¡ ì¢Œí‘œ ì˜¤í”„ì…‹ ê³„ì‚°
                 float posX = (x - (gridSize - 1) / 2.0f) * spacing;
                 float posY = (y - (gridSize - 1) / 2.0f) * spacing;
                 float posZ = (z - (gridSize - 1) / 2.0f) * spacing;
@@ -42,7 +50,7 @@ void TestScene::Initialize()
 void TestScene::Update(float dt)
 {
    
-    // 3. ¿ÀºêÁ§Æ®µé ¾÷µ¥ÀÌÆ® (´ÙÇü¼º È°¿ë)
+    // 3. ì˜¤ë¸Œì íŠ¸ë“¤ ì—…ë°ì´íŠ¸ (ë‹¤í˜•ì„± í™œìš©)
     for (auto obj : mGameObjects) {
         obj->Update(dt);
     }
@@ -54,12 +62,12 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), Camera::camForward, XMVectorSet(0, 1, 0, 0));
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
 
-    // È°¼ºÈ­µÈ ¿ÀºêÁ§Æ®µéÀ» ¸ğµÎ µå·Î¿ì (´ÙÇü¼º È°¿ë)
+    // í™œì„±í™”ëœ ì˜¤ë¸Œì íŠ¸ë“¤ì„ ëª¨ë‘ ë“œë¡œìš° (ë‹¤í˜•ì„± í™œìš©)
     for (auto obj : mGameObjects) {
         obj->Render(commandList, view, proj);
     }
 
-    // ¼³Á¤ UI 
+    // ì„¤ì • UI 
     ImGui::Begin("Settings");
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
