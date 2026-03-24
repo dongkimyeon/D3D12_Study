@@ -7,7 +7,7 @@ public:
 	Gizumo();
 	virtual void Initialize(ComPtr<ID3D12Device> device) override;
 	virtual void Update(float dt) override;
-	 // Render ÇÔ¼ö ¿À¹ö¶óÀÌµù Ãß°¡
+	 // Render í•¨ìˆ˜ ì˜¤ë²„ë¼ì´ë”© ì¶”ê°€
 	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
 
 

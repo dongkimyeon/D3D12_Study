@@ -2,6 +2,7 @@
 #include "TestScene.h"
 #include "Cube.h"
 #include "Plane.h"
+#include "Gizumo.h"
 #include "framework.h"
 #include "Camera.h"
 
@@ -17,6 +18,9 @@ TestScene::~TestScene()
 void TestScene::Initialize()
 {
 	// ============================================
+	GameObject* gizumo = new Gizumo();
+	gizumo->Initialize(Framework::GetDevice());
+	mGameObjects.push_back(gizumo);
 
 	GameObject* floorPlane = new Plane();
 	floorPlane->Initialize(Framework::GetDevice());
