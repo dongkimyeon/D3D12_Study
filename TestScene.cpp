@@ -73,6 +73,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     // 설정 UI 
     ImGui::Begin("Settings");
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+	ImGui::Separator();
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 
 	// 오브젝트 목록에서 Plane 타입 찾기
@@ -137,6 +138,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		{
 			selectedObj->SetPosition(pos.x, pos.y, pos.z);
 		}
+		ImGui::Separator();
 		if (ImGui::DragFloat3("Rotation", &rot.x, 0.1f))
 		{
 			selectedObj->SetRotation(rot.x, rot.y, rot.z);
