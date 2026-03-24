@@ -24,7 +24,6 @@ void TestScene::Initialize()
 
 	GameObject* floorPlane = new Plane();
 	floorPlane->Initialize(Framework::GetDevice());
-	floorPlane->SetPosition(0.0f, -5.0f, 0.0f); // 큐브 무리 아래쪽(-5.0f)에 배치
 	mGameObjects.push_back(floorPlane);
 
     int gridSize = 3;       // 3x3x3 형태로 총 27개의 큐브 생성
@@ -44,7 +43,7 @@ void TestScene::Initialize()
                 float posY = (y - (gridSize - 1) / 2.0f) * spacing;
                 float posZ = (z - (gridSize - 1) / 2.0f) * spacing;
 
-                cube->SetPosition(posX, posY, posZ);
+                cube->SetPosition(posX, posY + 5, posZ);
                 mGameObjects.push_back(cube);
             }
         }
