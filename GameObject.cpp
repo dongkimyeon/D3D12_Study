@@ -108,7 +108,10 @@ void GameObject::SetPosition(float x, float y, float z)
 	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
 	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
 
-	worldMatrix = rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
+	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
+
+
+	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
 }
 
 void GameObject::SetRotation(float pitch, float yaw, float roll)
@@ -121,7 +124,23 @@ void GameObject::SetRotation(float pitch, float yaw, float roll)
 	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
 	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
 
-	worldMatrix = rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
+	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
+
+
+	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
+}
+
+void GameObject::SetScale(float scaleX, float scaleY, float scaleZ)
+{
+	scale = { scaleX, scaleY, scaleZ };
+	// 현재 위치값과 회전값을 반영하여 월드 매트릭스 갱신
+	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
+	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
+	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
+	
+	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
+
+	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
 }
 
 void GameObject::BuildNormalBuffer(ComPtr<ID3D12Device> device)

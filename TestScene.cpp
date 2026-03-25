@@ -27,7 +27,7 @@ void TestScene::Initialize()
 	mGameObjects.push_back(floorPlane);
 
     int gridSize = 3;       // 3x3x3 형태로 총 27개의 큐브 생성
-    float spacing = 3.0f;   // 큐브 사이의 간격
+    float spacing = 10.0f;   // 큐브 사이의 간격
 
     for (int x = 0; x < gridSize; ++x)
     {
@@ -43,7 +43,8 @@ void TestScene::Initialize()
                 float posY = (y - (gridSize - 1) / 2.0f) * spacing;
                 float posZ = (z - (gridSize - 1) / 2.0f) * spacing;
 
-                cube->SetPosition(posX, posY + 5, posZ);
+                cube->SetPosition(posX, posY + 30, posZ);
+				cube->SetScale(2.0f, 2.0f, 2.0f); // 큐브 크기를 2배로 키움
                 mGameObjects.push_back(cube);
             }
         }
@@ -53,8 +54,7 @@ void TestScene::Initialize()
 void TestScene::Update(float dt)
 {
    
-    // 3. 오브젝트들 업데이트 (다형성 활용)
-    for (auto obj : mGameObjects) {
+    for (const auto& obj : mGameObjects) {
         obj->Update(dt);
     }
 }
@@ -65,8 +65,8 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), Camera::camForward, XMVectorSet(0, 1, 0, 0));
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
 
-    // 활성화된 오브젝트들을 모두 드로우 (다형성 활용)
-    for (auto obj : mGameObjects) {
+  
+    for (const auto& obj : mGameObjects) {
         obj->Render(commandList, view, proj);
     }
 
@@ -77,7 +77,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 
 	// 오브젝트 목록에서 Plane 타입 찾기
-	for (auto obj : mGameObjects)
+	for (const auto& obj : mGameObjects)
 	{
 		Plane* plane = dynamic_cast<Plane*>(obj);
 		if (plane != nullptr)
@@ -155,7 +155,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void TestScene::Release()
 {
-    for (auto obj : mGameObjects) {
+    for (const auto& obj : mGameObjects) {
         delete obj;
     }
     mGameObjects.clear();

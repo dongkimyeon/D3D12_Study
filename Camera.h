@@ -7,8 +7,9 @@ class Camera
 public:
   
 	static void Update(float dt);  
-    static void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj); // Ä«¸Ş¶ó´Â ·»´õ¸µÇÏÁö ¾ÊÀ½
-    // Ä«¸Ş¶ó °ü·Ã
+    static void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj); // ì¹´ë©”ë¼ëŠ” ë Œë”ë§í•˜ì§€ ì•ŠìŒ
+    
+	// ì¹´ë©”ë¼ ê´€ë ¨
     static XMFLOAT3 camPos;
     static float camYaw;
     static float camPitch;

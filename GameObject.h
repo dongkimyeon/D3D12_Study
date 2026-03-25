@@ -15,6 +15,7 @@ public:
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
     void SetPosition(float x, float y, float z);
 	void SetRotation(float pitch, float yaw, float roll);
+	void SetScale(float scaleX, float scaleY, float scaleZ);
 
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 
@@ -26,6 +27,7 @@ protected:
 public:
     XMFLOAT3 position;
 	XMFLOAT3 rotation;
+	XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
 
 protected:
     std::vector<OBJVertex> vertices;

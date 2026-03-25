@@ -53,11 +53,17 @@ void Cube::Initialize(ComPtr<ID3D12Device> device)
 
 void Cube::Update(float dt)
 {
-    GameObject::Update(dt);
-    
+	GameObject::Update(dt);
+
+	if (GameObject::position.y > 0)
+		GameObject::SetPosition(position.x, position.y - 9.8f * dt, position.z);
+
 	//XMMATRIX rotY = XMMatrixRotationY(dt);
 	//worldMatrix = rotY * worldMatrix;
 }
+	
+	
+
 
 void Cube::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
