@@ -191,6 +191,9 @@
     <ClInclude Include="Plane.h">
       <Filter>GameObject\Plane</Filter>
     </ClInclude>
+    <ClInclude Include="utiles.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders.hlsl">

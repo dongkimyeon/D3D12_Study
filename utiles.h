@@ -1,27 +1,22 @@
 #pragma once
+#include "stdafx.h"
 
 namespace Utiles
 {
-    inline void ThrowIfFailed(HRESULT hr)
-    {
-        if (FAILED(hr))
-        {
-            // Set a breakpoint on this line to catch DirectX API errors
-            throw std::exception{};
-        }
-    }
+   
 
     namespace Random
     {
+		std::random_device g_randomDevice;
         inline INT GetInt(INT min, INT max)
         {
-            uniform_int_distribution<INT> dis{ min, max };
-            return dis(g_randomEngine);
+            std::uniform_int_distribution<INT> dis{ min, max };
+            return dis(g_randomDevice);
         }
         inline FLOAT GetFloat(FLOAT min, FLOAT max)
         {
-            uniform_real_distribution<FLOAT> dis{ min, max };
-            return dis(g_randomEngine);
+            std::uniform_real_distribution<FLOAT> dis{ min, max };
+            return dis(g_randomDevice);
         }
     }
 
@@ -62,5 +57,23 @@ namespace Utiles
             else XMStoreFloat3(&result, XMVector3AngleBetweenVectors(XMLoadFloat3(&a), XMLoadFloat3(&b)));
             return result;
         }
+
+		//내적
+		inline FLOAT Dot(const XMFLOAT3& a, const XMFLOAT3& b)
+		{
+			XMVECTOR dotVec = XMVector3Dot(XMLoadFloat3(&a), XMLoadFloat3(&b));
+			return XMVectorGetX(dotVec); // 결과값 하나만 추출
+		}
+
+		
+
+		// XMVECTOR를 XMFLOAT3로 바로 변환해주는 편의 함수
+		inline XMFLOAT3 FromVector(FXMVECTOR v)
+		{
+			XMFLOAT3 result;
+			XMStoreFloat3(&result, v);
+			return result;
+		}
+
     }
 }

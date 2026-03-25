@@ -13,9 +13,11 @@ public:
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
 
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
-    void SetPosition(float x, float y, float z);
-	void SetRotation(float pitch, float yaw, float roll);
-	void SetScale(float scaleX, float scaleY, float scaleZ);
+
+	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
+	void SetRotation(float pitch, float yaw, float roll) { rotation = { pitch, yaw, roll }; }
+	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }
+
 
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 
@@ -28,6 +30,7 @@ public:
     XMFLOAT3 position;
 	XMFLOAT3 rotation;
 	XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
+	XMFLOAT4 forward_vector = { 0, 0, 1, 0 }; // 초기 전방 벡터 (Z축 방향)
 
 protected:
     std::vector<OBJVertex> vertices;
@@ -47,5 +50,6 @@ protected:
 	D3D12_VERTEX_BUFFER_VIEW normalVbView = {};
 	D3D12_INDEX_BUFFER_VIEW normalIbView = {};
 	UINT normalIndexCount = 0;
+
 
 };

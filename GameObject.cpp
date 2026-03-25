@@ -18,7 +18,20 @@ void GameObject::Initialize(ComPtr<ID3D12Device> device)
 
 void GameObject::Update(float dt)
 {
-    // 개별 오브젝트의 로직 (예: 애니메이션, 회전 등)
+	// 중력 작용
+	if (position.y > 0) // 땅에 닿기 전까지만 중력 적용
+		position.y -= 9.81f * dt;
+	// 면과의 충돌처리
+
+	
+	XMMATRIX mScale = XMMatrixScaling(scale.x, scale.y, scale.z);
+
+	XMMATRIX mRot = XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+
+	XMMATRIX mTrans = XMMatrixTranslation(position.x, position.y, position.z);
+
+	// 2. SRT 순서로 결합하여 월드 행렬 갱신
+	worldMatrix = mScale * mRot * mTrans;
 }
 
 void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
@@ -99,49 +112,6 @@ void GameObject::UpdateVertexBuffer()
     }
 }
 
-void GameObject::SetPosition(float x, float y, float z)
-{
-	position = { x, y, z };
-
-	// 현재 저장된 회전값을 함께 적용하여 월드 매트릭스 갱신
-	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
-	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
-	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
-
-	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
-
-
-	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
-}
-
-void GameObject::SetRotation(float pitch, float yaw, float roll)
-{
-	// 변경된 회전값을 멤버 변수에 저장 
-	rotation = { pitch, yaw, roll };
-
-	// 현재 위치값과 재계산된 회전값을 반영하여 월드 매트릭스 갱신
-	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
-	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
-	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
-
-	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
-
-
-	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
-}
-
-void GameObject::SetScale(float scaleX, float scaleY, float scaleZ)
-{
-	scale = { scaleX, scaleY, scaleZ };
-	// 현재 위치값과 회전값을 반영하여 월드 매트릭스 갱신
-	XMMATRIX rotX = XMMatrixRotationX(rotation.x);
-	XMMATRIX rotY = XMMatrixRotationY(rotation.y);
-	XMMATRIX rotZ = XMMatrixRotationZ(rotation.z);
-	
-	XMMATRIX scaling = XMMatrixScaling(scale.x, scale.y, scale.z);
-
-	worldMatrix = scaling * rotX * rotY * rotZ * XMMatrixTranslation(position.x, position.y, position.z);
-}
 
 void GameObject::BuildNormalBuffer(ComPtr<ID3D12Device> device)
 {
