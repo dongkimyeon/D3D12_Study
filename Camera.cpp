@@ -54,8 +54,11 @@ void Camera::Update(float dt)
 	if (Input::GetKey(eKeyCode::S)) pos -= forward * moveSpeed * dt;
 	if (Input::GetKey(eKeyCode::D)) pos += right * moveSpeed * dt;
 	if (Input::GetKey(eKeyCode::A)) pos -= right * moveSpeed * dt;
-	if (Input::GetKey(eKeyCode::E)) pos -= up * moveSpeed * dt;
-	if (Input::GetKey(eKeyCode::Q)) pos += up * moveSpeed * dt;
+
+	XMVECTOR worldUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+	if (Input::GetKey(eKeyCode::E)) pos -= worldUp * moveSpeed * dt;
+	if (Input::GetKey(eKeyCode::Q)) pos += worldUp * moveSpeed * dt;
 
 	if (Input::GetKeyDown(eKeyCode::SHIFT)) moveSpeed *= 2.0f;
 	if (Input::GetKeyUp(eKeyCode::SHIFT)) moveSpeed /= 2.0f;

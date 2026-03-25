@@ -84,24 +84,49 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::Separator();
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 
+	ImGui::Separator();
 	for (const auto& obj : mGameObjects) {
 		Cube* cube = dynamic_cast<Cube*>(obj);
 		if (cube) {
-			// 1. 카메라에서 큐브로 향하는 방향 벡터 (정규화)
-			DirectX::XMFLOAT3 toObj = Utiles::Vector3::Sub(cube->position, Camera::camPos);
-			toObj = Utiles::Vector3::Normalize(toObj);
+			// 1. "목표 좌표 - 내 좌표" (교수님 강조: 나를 원점으로 만들어 상대적 위치 파악)
+			DirectX::XMVECTOR targetPos = DirectX::XMLoadFloat3(&cube->position);
+			DirectX::XMVECTOR myPos = DirectX::XMLoadFloat3(&Camera::camPos);
+			// 방향 벡터 추출 (정규화는 내적/삼중적 결과의 '순수 부호'를 보기 위해 수행)
+			DirectX::XMVECTOR toObjVec = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(targetPos, myPos));
 
-			// 2. 내적을 통한 판별
-			// Camera::camForward와 Camera::camRight는 이제 XMFLOAT3이므로 직접 전달 가능합니다.
-			float fDot = Utiles::Vector3::Dot(Camera::camForward, toObj);
-			float rDot = Utiles::Vector3::Dot(Camera::camRight, toObj); // 좌우 판별을 위해 camRight 사용
+			// 2. 카메라의 로컬 기저 벡터 로드 (회전이 이미 반영된 상태)
+			DirectX::XMVECTOR forward = DirectX::XMLoadFloat3(&Camera::camForward);
+			DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&Camera::camUp);
 
-			// 3. ImGui 출력
+			// ---------------------------------------------------------
+			// 3. 앞/뒤 판별 (내적: Dot Product)
+			// ---------------------------------------------------------
+			DirectX::XMVECTOR dotFront = DirectX::XMVector3Dot(forward, toObjVec);
+			float fDot;
+			DirectX::XMStoreFloat(&fDot, dotFront);
+
+			// ---------------------------------------------------------
+			// 4. 좌/우 판별 (스칼라 삼중적: Scalar Triple Product)
+			// 공식: Up · (Forward × toObj) -> Up이 회전축 역할
+			// ---------------------------------------------------------
+			DirectX::XMVECTOR crossVec = DirectX::XMVector3Cross(forward, toObjVec);
+			DirectX::XMVECTOR dotSide = DirectX::XMVector3Dot(up, crossVec);
+			float tripleProduct;
+			DirectX::XMStoreFloat(&tripleProduct, dotSide);
+
+			// ---------------------------------------------------------
+			// 5. ImGui 출력 및 판별 로직
+			// ---------------------------------------------------------
 			const char* vertical = (fDot > 0) ? "Front" : "Back";
-			const char* horizontal = (rDot > 0) ? "Right" : "Left";
+			const char* horizontal = (tripleProduct > 0) ? "Right" : "Left";
 
-			ImGui::Text("Relative Pos: [%s] [%s]", vertical, horizontal);
-			ImGui::Text("Forward Intensity: %.2f", fDot); // 1.0에 가까울수록 정면
+			// 만약 값이 거의 0이라면 "Center"라고 표시할 수도 있습니다 (Deadzone 처리)
+			if (fabs(fDot) < 0.01f) vertical = "Side-aligned";
+			if (fabs(tripleProduct) < 0.01f) horizontal = "Center";
+
+			ImGui::Text("Object Position Relative to Camera:");
+			ImGui::Text("Vertical: %s (Value: %.2f)", vertical, fDot);
+			ImGui::Text("Horizontal: %s (Value: %.2f)", horizontal, tripleProduct);
 		}
 	}
 
