@@ -9,7 +9,7 @@ DirectX::XMFLOAT3 Camera::camUp = { 0.0f, 1.0f, 0.0f };
 float Camera::moveSpeed = 10.0f;
 float Camera::lookSpeed = 0.006f;
 float Camera::camYaw = 0.0f;
-float Camera::camPitch = 0.0f;
+float Camera::camPitch = 0.5f;
 POINT Camera::prevMousePos = { 0, 0 };
 bool Camera::isRotating = false;
 

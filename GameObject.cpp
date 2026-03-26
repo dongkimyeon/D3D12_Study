@@ -18,10 +18,6 @@ void GameObject::Initialize(ComPtr<ID3D12Device> device)
 
 void GameObject::Update(float dt)
 {
-	// 중력 작용
-	if (position.y > 0) // 땅에 닿기 전까지만 중력 적용
-		position.y -= 9.81f * dt;
-	// 면과의 충돌처리
 
 	
 	XMMATRIX mScale = XMMatrixScaling(scale.x, scale.y, scale.z);

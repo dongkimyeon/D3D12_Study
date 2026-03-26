@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "Framework.h"
 #include "SceneManager.h"
-#include "TestScene.h" // ¾ÀÀ» Á÷Á¢ µî·ÏÇÏ±â À§ÇØ Æ÷ÇÔ
-#include "LoadScene.h" // ¾À µî·Ï ÇÔ¼ö Æ÷ÇÔ
+#include "TestScene.h" // ì”¬ì„ ì§ì ‘ ë“±ë¡í•˜ê¸° ìœ„í•´ í¬í•¨
+#include "LoadScene.h" // ì”¬ ë“±ë¡ í•¨ìˆ˜ í¬í•¨
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
 
 Framework::Framework(int width, int height)
@@ -35,7 +35,7 @@ void Framework::Initialize(HWND hwnd)
     CompileShaders();
     CreateImGuiSrvHeap();
 
-    // ImGui ÅëÇÕ °´Ã¼ ÃÊ±âÈ­
+    // ImGui í†µí•© ê°ì²´ ì´ˆê¸°í™”
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -47,7 +47,7 @@ void Framework::Initialize(HWND hwnd)
     ImGui::GetIO().Fonts->Build();
     ImGui_ImplDX12_CreateDeviceObjects();
 
-    // ½Ã½ºÅÛ ÃÊ±âÈ­
+    // ì‹œìŠ¤í…œ ì´ˆê¸°í™”
     Time::Initialize();
     Input::Initialize();
     SceneManager::Initialize();
@@ -122,7 +122,7 @@ void Framework::Render()
     SceneManager::Render(mCommandList);
     // ============================================
 
-    // ImGui ·»´õ Ä¿¸Çµå ±â·Ï
+    // ImGui ë Œë” ì»¤ë§¨ë“œ ê¸°ë¡
     ImGui::Render();
     ID3D12DescriptorHeap* descriptorHeaps[] = { mImGuiSrvHeap.Get() };
     mCommandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -274,7 +274,7 @@ void Framework::CompileShaders()
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 
 
     psoDesc.RasterizerState.DepthClipEnable = TRUE;

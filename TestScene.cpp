@@ -23,47 +23,82 @@ void TestScene::Initialize()
 	gizumo->Initialize(Framework::GetDevice());
 	mGameObjects.push_back(gizumo);
 
-	GameObject* floorPlane = new Plane();
-	floorPlane->Initialize(Framework::GetDevice());
-	mGameObjects.push_back(floorPlane);
+	for (int i = 0; i < 2; ++i)
+	{
+		GameObject* floorPlane = new Plane();
+		floorPlane->Initialize(Framework::GetDevice());
+		floorPlane->SetPosition(0, 15.0f * i, 0); // 각 평면을 y축으로 5 단위씩 떨어뜨려 배치
+		if (i == 1) {
+			floorPlane->SetRotation(-XM_PI, 0, 0); // 두 번째 평면은 x축으로 90도 회전
+		}
+		mGameObjects.push_back(floorPlane);
 
+	}
+	
 	GameObject* testCube = new Cube();
 	testCube->Initialize(Framework::GetDevice());
-	testCube->SetPosition(0, 0, 0);
+	testCube->SetPosition(0, 7.5f, 0);
 	mGameObjects.push_back(testCube);
-    //int gridSize = 2;       // 3x3x3 형태로 총 27개의 큐브 생성
-    //float spacing = 5.0f;   // 큐브 사이의 간격
+	//int gridSize = 15;       // 3x3x3 형태로 총 27개의 큐브 생성
+	//float spacing = 5.0f;   // 큐브 사이의 간격
 
-    //for (int x = 0; x < gridSize; ++x)
-    //{
-    //    for (int y = 0; y < gridSize; ++y)
-    //    {
-    //        for (int z = 0; z < gridSize; ++z)
-    //        {
-    //            GameObject* cube = new Cube();
-    //            cube->Initialize(Framework::GetDevice());
-
-    //            // 전체 큐브 무리의 중심이 원점(0, 0, 0)이 되도록 좌표 오프셋 계산
-    //            float posX = (x - (gridSize - 1) / 2.0f) * spacing;
-    //            float posY = (y - (gridSize - 1) / 2.0f) * spacing;
-    //            float posZ = (z - (gridSize - 1) / 2.0f) * spacing;
-
-    //            cube->SetPosition(posX, posY + 30, posZ);
-				//cube->SetScale(2.0f, 2.0f, 2.0f); // 큐브 크기를 2배로 키움
-    //            mGameObjects.push_back(cube);
-    //        }
-    //    }
-    //}
+	//for (int x = 0; x < gridSize; ++x) {
+	//	for (int y = 0; y < gridSize; ++y) {
+	//		for (int z = 0; z < gridSize; ++z) {
+	//			GameObject* cube = new Cube();
+	//			cube->Initialize(Framework::GetDevice());
+	//			cube->SetPosition(x * spacing, y * spacing, z * spacing);
+	//			mGameObjects.push_back(cube);
+	//		}
+	//	}
+	//}
 }
 
 void TestScene::Update(float dt)
 {
-	
+	// 1. 모든 게임 오브젝트 업데이트 (중력 등 적용)
+	for (const auto& obj : mGameObjects) {
+		obj->Update(dt);
+	}
 
-   
-    for (const auto& obj : mGameObjects) {
-        obj->Update(dt);
-    }
+	// 2. 충돌 감지 및 반응 (평면의 방정식 사용)
+	for (auto& objA : mGameObjects) {
+		Cube* cube = dynamic_cast<Cube*>(objA);
+		if (!cube) continue; // 큐브가 아니면 패스
+
+		for (auto& objB : mGameObjects) {
+			Plane* plane = dynamic_cast<Plane*>(objB);
+			if (!plane) continue; // 평면이 아니면 패스
+
+			// --- 평면의 정보 추출 ---
+			// 평면의 Normal은 기본적으로 (0, 1, 0)이며, 평면의 Rotation에 의해 변함
+			XMMATRIX planeRot = XMMatrixRotationRollPitchYaw(plane->rotation.x, plane->rotation.y, plane->rotation.z);
+			XMVECTOR planeNormal = XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), planeRot);
+			XMVECTOR planePos = XMLoadFloat3(&plane->position);
+			XMVECTOR cubePos = XMLoadFloat3(&cube->position);
+
+			// --- 점과 평면 사이의 거리 계산 (D = n · (Q - P0)) ---
+			XMVECTOR vecToCube = XMVectorSubtract(cubePos, planePos);
+			XMVECTOR distVec = XMVector3Dot(planeNormal, vecToCube);
+
+			float distance = XMVectorGetX(distVec);
+
+			// 큐브의 절반 크기 (바닥면까지의 거리)
+			float halfHeight = cube->scale.y * 0.5f;
+
+			// 충돌 조건: 거리가 큐브의 절반보다 작을 때
+			if (distance < halfHeight)
+			{
+				// 충돌 반응: 평면의 법선 방향으로 큐브를 밀어냄 (Penetration Resolution)
+				float penetrationDepth = halfHeight - distance;
+				XMVECTOR correction = XMVectorScale(planeNormal, penetrationDepth);
+
+				XMVECTOR correctedPos = XMVectorAdd(cubePos, correction);
+				XMStoreFloat3(&cube->position, correctedPos);
+
+			}
+		}
+	}
 }
 
 void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -88,45 +123,27 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (const auto& obj : mGameObjects) {
 		Cube* cube = dynamic_cast<Cube*>(obj);
 		if (cube) {
-			// 1. "목표 좌표 - 내 좌표" (교수님 강조: 나를 원점으로 만들어 상대적 위치 파악)
-			DirectX::XMVECTOR targetPos = DirectX::XMLoadFloat3(&cube->position);
-			DirectX::XMVECTOR myPos = DirectX::XMLoadFloat3(&Camera::camPos);
-			// 방향 벡터 추출 (정규화는 내적/삼중적 결과의 '순수 부호'를 보기 위해 수행)
-			DirectX::XMVECTOR toObjVec = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(targetPos, myPos));
+			// Render 함수 내 반복문 안에서 교체해서 테스트해보세요.
+			// 1. 방향 구하기
+			XMFLOAT3 toObj;
+			XMVECTOR toObjVec;
+			XMVECTOR camPosVec = XMLoadFloat3(&Camera::camPos);
+			XMVECTOR objPosVec = XMLoadFloat3(&cube->position);
 
-			// 2. 카메라의 로컬 기저 벡터 로드 (회전이 이미 반영된 상태)
-			DirectX::XMVECTOR forward = DirectX::XMLoadFloat3(&Camera::camForward);
-			DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&Camera::camUp);
+			toObjVec = XMVectorSubtract(objPosVec, camPosVec);
 
-			// ---------------------------------------------------------
-			// 3. 앞/뒤 판별 (내적: Dot Product)
-			// ---------------------------------------------------------
-			DirectX::XMVECTOR dotFront = DirectX::XMVector3Dot(forward, toObjVec);
-			float fDot;
-			DirectX::XMStoreFloat(&fDot, dotFront);
+			// 2. 정규화 (Scalar 방식은 루트를 직접 계산해야 함)
+			float length = XMVectorGetX(XMVector3Length(toObjVec));
+			toObjVec = XMVectorScale(toObjVec, 1.0f / length);
 
-			// ---------------------------------------------------------
-			// 4. 좌/우 판별 (스칼라 삼중적: Scalar Triple Product)
-			// 공식: Up · (Forward × toObj) -> Up이 회전축 역할
-			// ---------------------------------------------------------
-			DirectX::XMVECTOR crossVec = DirectX::XMVector3Cross(forward, toObjVec);
-			DirectX::XMVECTOR dotSide = DirectX::XMVector3Dot(up, crossVec);
-			float tripleProduct;
-			DirectX::XMStoreFloat(&tripleProduct, dotSide);
+			// 3. 내적 (Dot Product) 직접 계산
+			float fDot = XMVectorGetX(XMVector3Dot(XMLoadFloat3(&Camera::camForward), toObjVec));
 
-			// ---------------------------------------------------------
-			// 5. ImGui 출력 및 판별 로직
-			// ---------------------------------------------------------
-			const char* vertical = (fDot > 0) ? "Front" : "Back";
-			const char* horizontal = (tripleProduct > 0) ? "Right" : "Left";
+			// 4. 외적 (Cross Product) 계산
+			XMVECTOR cross = XMVector3Cross(XMLoadFloat3(&Camera::camForward), toObjVec);
 
-			// 만약 값이 거의 0이라면 "Center"라고 표시할 수도 있습니다 (Deadzone 처리)
-			if (fabs(fDot) < 0.01f) vertical = "Side-aligned";
-			if (fabs(tripleProduct) < 0.01f) horizontal = "Center";
-
-			ImGui::Text("Object Position Relative to Camera:");
-			ImGui::Text("Vertical: %s (Value: %.2f)", vertical, fDot);
-			ImGui::Text("Horizontal: %s (Value: %.2f)", horizontal, tripleProduct);
+			// 5. 스칼라 삼중적 마무리
+			float tripleProduct = XMVectorGetX(XMVector3Dot(XMLoadFloat3(&Camera::camForward), cross));
 		}
 	}
 
@@ -149,63 +166,63 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 	ImGui::End();
 
-	//ImGui::Begin("Object Control");
+	ImGui::Begin("Object Control");
 
-	//// 1. 오브젝트 선택 리스트 생성
-	//int cubeDisplayCount = 0; 
-	//if (ImGui::BeginListBox("Cube List"))
-	//{
-	//	for (int i = 0; i < mGameObjects.size(); ++i)
-	//	{
-	//		// 큐브 타입만 골라서 리스트에 표시
-	//		Cube* cube = dynamic_cast<Cube*>(mGameObjects[i]);
-	//		if (cube)
-	//		{
-	//			char label[32];
-	//			sprintf_s(label, "Cube %d (Index: %d)", cubeDisplayCount++, i);
+	// 1. 오브젝트 선택 리스트 생성
+	int cubeDisplayCount = 0; 
+	if (ImGui::BeginListBox("Cube List"))
+	{
+		for (int i = 0; i < mGameObjects.size(); ++i)
+		{
+			// 큐브 타입만 골라서 리스트에 표시
+			Cube* cube = dynamic_cast<Cube*>(mGameObjects[i]);
+			if (cube)
+			{
+				char label[32];
+				sprintf_s(label, "Cube %d (Index: %d)", cubeDisplayCount++, i);
 
-	//			// 리스트 아이템 클릭 시 mSelectedIndex 업데이트
-	//			bool isSelected = (mSelectedIndex == i);
-	//			if (ImGui::Selectable(label, isSelected))
-	//			{
-	//				mSelectedIndex = i;
-	//			}
+				// 리스트 아이템 클릭 시 mSelectedIndex 업데이트
+				bool isSelected = (mSelectedIndex == i);
+				if (ImGui::Selectable(label, isSelected))
+				{
+					mSelectedIndex = i;
+				}
 
-	//			// 포커스 설정 (선택된 항목으로 스크롤)
-	//			if (isSelected)
-	//				ImGui::SetItemDefaultFocus();
-	//		}
-	//	}
-	//	ImGui::EndListBox();
-	//}
+				// 포커스 설정 (선택된 항목으로 스크롤)
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndListBox();
+	}
 
-	//ImGui::Separator();
+	ImGui::Separator();
 
-	//// 2. 선택된 큐브의 데이터 수정
-	//if (mSelectedIndex != -1)
-	//{
-	//	GameObject* selectedObj = mGameObjects[mSelectedIndex];
-	//	XMFLOAT3 pos = selectedObj->position; 
-	//	XMFLOAT3 rot = selectedObj->rotation; 
-	//	XMVECTOR forward = XMLoadFloat4(&selectedObj->forward_vector);
+	// 2. 선택된 큐브의 데이터 수정
+	if (mSelectedIndex != -1)
+	{
+		GameObject* selectedObj = mGameObjects[mSelectedIndex];
+		XMFLOAT3 pos = selectedObj->position; 
+		XMFLOAT3 rot = selectedObj->rotation; 
+		XMVECTOR forward = XMLoadFloat4(&selectedObj->forward_vector);
 
-	//	ImGui::Text("Editing: Cube %d", mSelectedIndex);
-	//	if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
-	//	{
-	//		selectedObj->SetPosition(pos.x, pos.y, pos.z);
-	//	}
-	//	ImGui::Separator();
-	//	if (ImGui::DragFloat3("Rotation", &rot.x, 0.1f))
-	//	{
-	//		selectedObj->SetRotation(rot.x, rot.y, rot.z);
-	//	}
-	//}
-	//else
-	//{
-	//	ImGui::Text("Select a cube from the list.");
-	//}
+		ImGui::Text("Editing: Cube %d", mSelectedIndex);
+		if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
+		{
+			selectedObj->SetPosition(pos.x, pos.y, pos.z);
+		}
+		ImGui::Separator();
+		if (ImGui::DragFloat3("Rotation", &rot.x, 0.1f))
+		{
+			selectedObj->SetRotation(rot.x, rot.y, rot.z);
+		}
+	}
+	else
+	{
+		ImGui::Text("Select a cube from the list.");
+	}
 
- //   ImGui::End();
+    ImGui::End();
 }
 
 void TestScene::Release()
