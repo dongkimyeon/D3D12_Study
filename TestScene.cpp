@@ -6,6 +6,9 @@
 #include "framework.h"
 #include "Camera.h"
 #include "Utiles.h"
+#include "HeliBlade.h"
+#include "HeliBody.h"	
+#include "HeliTale.h"
 
 extern bool debugMode;
 
@@ -54,6 +57,24 @@ void TestScene::Initialize()
 	//		}
 	//	}
 	//}
+
+	GameObject* heliBody = new HeliBody();
+	heliBody->Initialize(Framework::GetDevice());
+	heliBody->SetPosition(20, 0, 0);
+	mGameObjects.push_back(heliBody);
+
+	GameObject* heliTale = new HeliTale();
+	heliTale->Initialize(Framework::GetDevice());
+	heliTale->SetPosition(20, 0, 0);
+	mGameObjects.push_back(heliTale);
+
+	GameObject* heliBlade = new HeliBlade();
+	heliBlade->Initialize(Framework::GetDevice());
+	heliBlade->SetPosition(20, 0, 0);
+	mGameObjects.push_back(heliBlade);
+
+
+
 }
 
 void TestScene::Update(float dt)

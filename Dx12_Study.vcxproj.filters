@@ -52,6 +52,9 @@
     <Filter Include="GameObject\Plane">
       <UniqueIdentifier>{09dca376-50e3-4b4e-bd9f-97749b180874}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject\Helicopter">
+      <UniqueIdentifier>{cbc1ddd3-b7a4-4dc2-90a1-17c4a6d4e434}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -116,6 +119,15 @@
     </ClCompile>
     <ClCompile Include="Plane.cpp">
       <Filter>GameObject\Plane</Filter>
+    </ClCompile>
+    <ClCompile Include="HeliBlade.cpp">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClCompile>
+    <ClCompile Include="HeliBody.cpp">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClCompile>
+    <ClCompile Include="HeliTale.cpp">
+      <Filter>GameObject\Helicopter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -193,6 +205,15 @@
     </ClInclude>
     <ClInclude Include="utiles.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="HeliBlade.h">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClInclude>
+    <ClInclude Include="HeliBody.h">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClInclude>
+    <ClInclude Include="HeliTale.h">
+      <Filter>GameObject\Helicopter</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
