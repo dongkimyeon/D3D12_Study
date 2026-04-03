@@ -5,6 +5,9 @@
 #include "LoadScene.h" // 씬 등록 함수 포함
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
 
+
+
+
 Framework::Framework(int width, int height)
     : mWindowWidth(width), mWindowHeight(height)
 {

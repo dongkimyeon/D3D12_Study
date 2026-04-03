@@ -7,6 +7,8 @@
 #include "Camera.h"
 #include "Utiles.h"
 
+extern bool debugMode;
+
 TestScene::TestScene()
 {
 
@@ -56,12 +58,81 @@ void TestScene::Initialize()
 
 void TestScene::Update(float dt)
 {
-	// 1. 모든 게임 오브젝트 업데이트 (중력 등 적용)
+	
 	for (const auto& obj : mGameObjects) {
 		obj->Update(dt);
 	}
 
-	// 2. 충돌 감지 및 반응 (평면의 방정식 사용)
+	
+	if (!debugMode)
+	{
+		for (const auto& obj : mGameObjects) {
+			Cube* cube = dynamic_cast<Cube*>(obj);
+			if (cube) {
+	
+				if (Input::GetKey(eKeyCode::LButton)){
+					POINT currMousePos;
+					GetCursorPos(&currMousePos);
+
+					if (!Camera::isRotating) { Camera::prevMousePos = currMousePos; Camera::isRotating = true; }
+
+					Camera::camYaw += (currMousePos.x - Camera::prevMousePos.x) * Camera::lookSpeed;
+					Camera::camPitch += (currMousePos.y - Camera::prevMousePos.y) * Camera::lookSpeed;
+					const float limit = DirectX::XM_PIDIV2 - 0.1f;
+					if (Camera::camPitch > limit) Camera::camPitch = limit;
+					if (Camera::camPitch < -limit) Camera::camPitch = -limit;
+
+					Camera::prevMousePos = currMousePos;
+				}
+				else { Camera::isRotating = false; }
+
+				// 2. 카메라 방향 벡터 연산
+				DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(Camera::camPitch, Camera::camYaw, 0.0f);
+
+				DirectX::XMVECTOR forward = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotationMatrix);
+				DirectX::XMVECTOR right = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotationMatrix);
+				DirectX::XMVECTOR up = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotationMatrix);
+
+				// 연산된 방향 벡터를 XMFLOAT3에 저장 (메모리)
+				DirectX::XMStoreFloat3(&Camera::camForward, forward);
+				DirectX::XMStoreFloat4(&cube->forward_vector, forward); 
+				DirectX::XMStoreFloat3(&Camera::camRight, right);
+				DirectX::XMStoreFloat3(&Camera::camUp, up);
+
+				//obj가 바라보는 방향과 카메라가 보는 방향을 일치 시킨다.
+				cube->rotation.y = Camera::camYaw;
+				cube->rotation.x = Camera::camPitch; 
+
+
+				// 3. 카메라 이동 (Load -> Math -> Store)
+				DirectX::XMVECTOR objPos = DirectX::XMLoadFloat3(&cube->position);
+				DirectX::XMVECTOR camPos = DirectX::XMLoadFloat3(&Camera::camPos);
+				camPos = objPos - forward * 10.0f + up * 2.0f; // 카메라를 큐브 뒤쪽과 위쪽에 배치
+				
+				float moveSpeed = 100.0f;
+
+				if (Input::GetKey(eKeyCode::W)) objPos += forward * moveSpeed * dt;
+				if (Input::GetKey(eKeyCode::S)) objPos -= forward * moveSpeed * dt;
+				if (Input::GetKey(eKeyCode::D)) objPos += right * moveSpeed * dt;
+				if (Input::GetKey(eKeyCode::A)) objPos -= right * moveSpeed * dt;
+
+				XMVECTOR worldUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+				if (Input::GetKey(eKeyCode::Q)) objPos -= worldUp * moveSpeed * dt;
+				if (Input::GetKey(eKeyCode::E)) objPos += worldUp * moveSpeed * dt;
+
+				if (Input::GetKeyDown(eKeyCode::SHIFT)) moveSpeed *= 2.0f;
+				if (Input::GetKeyUp(eKeyCode::SHIFT)) moveSpeed /= 2.0f;
+
+				DirectX::XMStoreFloat3(&Camera::camPos, camPos);
+				DirectX::XMStoreFloat3(&cube->position, objPos);
+			}
+		}
+	}
+
+
+
+	
 	for (auto& objA : mGameObjects) {
 		Cube* cube = dynamic_cast<Cube*>(objA);
 		if (!cube) continue; // 큐브가 아니면 패스
@@ -99,6 +170,9 @@ void TestScene::Update(float dt)
 			}
 		}
 	}
+
+
+
 }
 
 void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -115,7 +189,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
     // 설정 UI 
     ImGui::Begin("Settings");
-    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Text("FPS: %.1f", Time::GetDeltaTime());
 	ImGui::Separator();
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 
@@ -123,7 +197,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (const auto& obj : mGameObjects) {
 		Cube* cube = dynamic_cast<Cube*>(obj);
 		if (cube) {
-			// Render 함수 내 반복문 안에서 교체해서 테스트해보세요.
+			
 			// 1. 방향 구하기
 			XMFLOAT3 toObj;
 			XMVECTOR toObjVec;
@@ -154,7 +228,6 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		if (plane != nullptr)
 		{
 			XMFLOAT3 pos = plane->position;
-		
 			if (ImGui::DragFloat3("Plane Position", &pos.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
@@ -181,14 +254,13 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 				char label[32];
 				sprintf_s(label, "Cube %d (Index: %d)", cubeDisplayCount++, i);
 
-				// 리스트 아이템 클릭 시 mSelectedIndex 업데이트
 				bool isSelected = (mSelectedIndex == i);
 				if (ImGui::Selectable(label, isSelected))
 				{
 					mSelectedIndex = i;
 				}
 
-				// 포커스 설정 (선택된 항목으로 스크롤)
+			
 				if (isSelected)
 					ImGui::SetItemDefaultFocus();
 			}

@@ -7,9 +7,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 #define WINDOW_WIDTH 1280   
 #define WINDOW_HEIGHT 720
 
+
+extern bool debugMode = true;
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    // ImGui°¡ ÀÔ·ÂÀ» Ä¸Ã³ÇÏµµ·Ï
+    // ImGuiê°€ ì…ë ¥ì„ ìº¡ì²˜í•˜ë„ë¡
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
         return true;
 
@@ -28,7 +31,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
 
-    // À©µµ¿ì »ı¼º ·ÎÁ÷
+    // ìœˆë„ìš° ìƒì„± ë¡œì§
     WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
     winClass.style = CS_HREDRAW | CS_VREDRAW;
     winClass.lpfnWndProc = WndProc;
@@ -48,7 +51,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
     ShowWindow(hwnd, nCmdShow);
 
-    // ÇÁ·¹ÀÓ¿öÅ© ±¸µ¿
+    // í”„ë ˆì„ì›Œí¬ êµ¬ë™
     Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
     framework.Initialize(hwnd);
     framework.Run();

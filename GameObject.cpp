@@ -4,7 +4,16 @@
 GameObject::GameObject()
 {
     position = { 0, 0, 0 };
-    worldMatrix = XMMatrixIdentity();
+	worldMatrix = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
+	XMMATRIX temp = XMLoadFloat4x4(&worldMatrix);
+	temp = XMMatrixIdentity();
+	XMStoreFloat4x4(&worldMatrix, temp);
+
 }
 
 GameObject::~GameObject()
@@ -18,23 +27,26 @@ void GameObject::Initialize(ComPtr<ID3D12Device> device)
 
 void GameObject::Update(float dt)
 {
-
-	
+	// 1. 현재 프레임의 SRT(Scale, Rotation, Translation) 행렬을 생성합니다.
 	XMMATRIX mScale = XMMatrixScaling(scale.x, scale.y, scale.z);
-
 	XMMATRIX mRot = XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
-
 	XMMATRIX mTrans = XMMatrixTranslation(position.x, position.y, position.z);
 
-	// 2. SRT 순서로 결합하여 월드 행렬 갱신
-	worldMatrix = mScale * mRot * mTrans;
+	// 2. 행렬 결합 (S -> R -> T 순서가 일반적입니다)
+	// 기존 worldMatrix를 곱하지 않고 새로 계산하여 '대입'합니다.
+	XMMATRIX world = mScale * mRot * mTrans;
+
+	// 3. XMFLOAT4X4에 저장 (CPU 메모리 구조 그대로 저장)
+	// 여기서 Transpose를 하지 마세요. 연산은 Row-major 상태로 유지하는 게 편합니다.
+	XMStoreFloat4x4(&worldMatrix, world);
 }
+
 
 void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
 	if (indices.empty()) return; // 로드된 메쉬가 없다면 그리지 않음
-
-	XMMATRIX mvp = worldMatrix * view * proj;
+	XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
+	XMMATRIX mvp =  world * view * proj;
 	XMFLOAT4X4 mvpFloat;
 	XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp));
 
@@ -46,7 +58,7 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 	commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
 
 	// ============================================
-	// 법선 벡터 렌더링 (데이터가 존재하는 경우만)
+	// 법선 벡터 렌더링
 	if (normalIndexCount > 0)
 	{
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);

@@ -14,6 +14,12 @@ public:
 
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
 
+	void GetWorldMatrix(XMFLOAT4X4& outMatrix) const { outMatrix = worldMatrix; }
+	void GetPosition(XMFLOAT3& outPosition) const { outPosition = position; }
+	void GetRotation(XMFLOAT3& outRotation) const { outRotation = rotation; }
+	void GetScale(XMFLOAT3& outScale) const { outScale = scale; }
+
+
 	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
 	void SetRotation(float pitch, float yaw, float roll) { rotation = { pitch, yaw, roll }; }
 	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }
@@ -35,7 +41,8 @@ public:
 protected:
     std::vector<OBJVertex> vertices;
     std::vector<uint16_t> indices;
-    XMMATRIX worldMatrix;
+
+    XMFLOAT4X4 worldMatrix;
 
     ComPtr<ID3D12Resource> vertexBuffer;
     ComPtr<ID3D12Resource> indexBuffer;
