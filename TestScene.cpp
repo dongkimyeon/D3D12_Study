@@ -60,17 +60,20 @@ void TestScene::Initialize()
 
 	GameObject* heliBody = new HeliBody();
 	heliBody->Initialize(Framework::GetDevice());
-	heliBody->SetPosition(20, 0, 0);
+	heliBody->SetPosition(0, 0, 0);
+
 	mGameObjects.push_back(heliBody);
 
 	GameObject* heliTale = new HeliTale();
 	heliTale->Initialize(Framework::GetDevice());
-	heliTale->SetPosition(20, 0, 0);
+	heliTale->SetPosition(0, 0, 0);
+
 	mGameObjects.push_back(heliTale);
 
 	GameObject* heliBlade = new HeliBlade();
 	heliBlade->Initialize(Framework::GetDevice());
-	heliBlade->SetPosition(20, 0, 0);
+	heliBlade->SetPosition(0, 0, 0);
+	
 	mGameObjects.push_back(heliBlade);
 
 
@@ -85,7 +88,7 @@ void TestScene::Update(float dt)
 	}
 
 	
-	if (!debugMode)
+	/*if (!debugMode)
 	{
 		for (const auto& obj : mGameObjects) {
 			Cube* cube = dynamic_cast<Cube*>(obj);
@@ -149,7 +152,7 @@ void TestScene::Update(float dt)
 				DirectX::XMStoreFloat3(&cube->position, objPos);
 			}
 		}
-	}
+	}*/
 
 
 
