@@ -59,7 +59,8 @@ enum class LogColor {
 	YELLOW = 14,   // [ImGui]
 	MAGENTA = 13,   // [System]
 	RED = 12,   // [Error]
-	GRAY = 8,    // [Release]
+	BLUE = 9,    // [Info]
+	GRAY = 8    // [Release]
 };
 
 inline void PrintLog(LogColor color, const std::string& msg)

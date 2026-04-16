@@ -1,63 +1,80 @@
 #include "stdafx.h"
 #include "Framework.h"
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-
 #define WINDOW_WIDTH 1280   
 #define WINDOW_HEIGHT 720
-
-
 extern bool debugMode = true;
-
-
+Framework* gFramework = nullptr;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    // ImGui가 입력을 캡처하도록
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-        return true;
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+		return true;
 
-    switch (msg)
-    {
-    case WM_KEYDOWN:
-        if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
-        return 0;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
-    }
-    return DefWindowProcW(hwnd, msg, wparam, lparam);
+	switch (msg)
+	{
+	case WM_ENTERSIZEMOVE:
+		if (gFramework) gFramework->SetResizing(true);
+		return 0;
+
+	case WM_EXITSIZEMOVE:
+		if (gFramework)
+		{
+			gFramework->SetResizing(false);
+			RECT rc = {};
+			GetClientRect(hwnd, &rc);
+			int w = rc.right - rc.left;
+			int h = rc.bottom - rc.top;
+			if (w > 0 && h > 0)
+				gFramework->OnResize(w, h);
+		}
+		return 0;
+
+	case WM_SIZE:
+		if (gFramework && wparam != SIZE_MINIMIZED && !gFramework->IsResizing())
+		{
+			// 드래그 중이 아닐 때만 (전체화면 전환 등 프로그램적 변경)
+			int w = LOWORD(lparam);
+			int h = HIWORD(lparam);
+			if (w > 0 && h > 0)
+				gFramework->OnResize(w, h);
+		}
+		return 0;
+
+	case WM_KEYDOWN:
+		if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
+		return 0;
+
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return 0;
+	}
+	return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
+	WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
+	winClass.style = CS_HREDRAW | CS_VREDRAW;
+	winClass.lpfnWndProc = WndProc;
+	winClass.hInstance = hInstance;
+	winClass.hCursor = LoadCursor(0, IDC_ARROW);
+	winClass.lpszClassName = L"DirectX_12";
+	RegisterClassExW(&winClass);
 
-    // 윈도우 생성 로직
-    WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
-    winClass.style = CS_HREDRAW | CS_VREDRAW;
-    winClass.lpfnWndProc = WndProc;
-    winClass.hInstance = hInstance;
-    winClass.hCursor = LoadCursor(0, IDC_ARROW);
-    winClass.lpszClassName = L"DirectX_12";
+	RECT initialRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
+	HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"DirectX_12",
+		WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+		initialRect.right - initialRect.left, initialRect.bottom - initialRect.top,
+		0, 0, hInstance, 0);
+	ShowWindow(hwnd, nCmdShow);
 
-    RegisterClassExW(&winClass);
+	Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
+	gFramework = &framework;   // ✅ 포인터 등록 (기존 코드에 누락되어 있었음)
+	framework.Initialize(hwnd);
+	framework.Run();
 
-    RECT initialRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-    AdjustWindowRectEx(&initialRect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
-
-    HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, winClass.lpszClassName, L"DirectX_12",
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-        initialRect.right - initialRect.left, initialRect.bottom - initialRect.top,
-        0, 0, hInstance, 0);
-
-    ShowWindow(hwnd, nCmdShow);
-
-    // 프레임워크 구동
-    Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
-    framework.Initialize(hwnd);
-    framework.Run();
-
-    FreeConsole();
-    return 0;
+	FreeConsole();
+	return 0;
 }

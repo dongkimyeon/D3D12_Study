@@ -1,6 +1,5 @@
 #pragma once
-#include <vector>
-#include <string>
+#include "stdafx.h"
 
 struct OBJVertex {
     float x, y, z;       // 위치

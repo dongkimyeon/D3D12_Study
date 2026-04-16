@@ -264,7 +264,6 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
     // 설정 UI 
     ImGui::Begin("Settings");
-    ImGui::Text("FPS: %.1f", Time::GetDeltaTime());
 	ImGui::Separator();
     ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 

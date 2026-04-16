@@ -20,11 +20,9 @@ enum class eKeyCode
     Z, X, C, V, B, N, M,
     Left, Right, Down, Up,
     LButton, MButton, RButton, SPACE, ESC, BACK,
-    SHIFT,
-    F1,
-    MINUS,      // - 키 추가
-    EQUAL,      // = 키 추가
-    End
+    SHIFT, F1, MINUS, EQUAL, F9,
+    End,
+	
 };
 
 enum class Vector2

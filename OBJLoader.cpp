@@ -23,7 +23,7 @@ bool OBJLoader::Load(const std::string& filename,
         iss >> prefix;
 
         if (prefix == "v") {
-            // ���� ��ġ
+    
             float x, y, z;
             iss >> x >> y >> z;
             positions.push_back(x);
@@ -31,7 +31,7 @@ bool OBJLoader::Load(const std::string& filename,
             positions.push_back(z);
         }
         else if (prefix == "vn") {
-            // ���� ���
+         
             float nx, ny, nz;
             iss >> nx >> ny >> nz;
             normals.push_back(nx);
@@ -39,7 +39,7 @@ bool OBJLoader::Load(const std::string& filename,
             normals.push_back(nz);
         }
         else if (prefix == "f") {
-            // �� (�ﰢ���� ����)
+           
             std::string v1, v2, v3;
             iss >> v1 >> v2 >> v3;
 
@@ -59,7 +59,7 @@ bool OBJLoader::Load(const std::string& filename,
         }
     }
 
-    // ���� ������ ����
+
     vertices.clear();
     indices.clear();
 
@@ -87,8 +87,8 @@ bool OBJLoader::Load(const std::string& filename,
         indices.push_back(static_cast<uint16_t>(i));
     }
 
-    std::cout << "Loaded " << vertices.size() << " vertices, "
-        << indices.size() / 3 << " triangles" << std::endl;
+	PrintLog(LogColor::BLUE, "[OBJLoader] Loaded " + std::to_string(vertices.size()) + " vertices, " +
+        std::to_string(indices.size() / 3) + " triangles");
 
     // --- AABB 센터링 (바운딩박스 중심을 원점으로) ---
     if (!vertices.empty()) {
