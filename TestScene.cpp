@@ -58,62 +58,82 @@ void TestScene::Initialize()
 	//	}
 	//}
 
-	GameObject* heliBody = new HeliBody();
-	heliBody->Initialize(Framework::GetDevice());
-	heliBody->BakeRotationX(-90.f);
-	mGameObjects.push_back(heliBody);
+	// 1. Body 생성
+	auto body = std::make_unique<HeliBody>(); // 스마트 포인터로 안전하게 생성
+	body->Initialize(Framework::GetDevice());
+	body->BakeRotationX(-90.f);
 
-	GameObject* heliTale = new HeliTale();
-	heliTale->Initialize(Framework::GetDevice());
-	heliTale->BakeRotationX(-90.f);
-	
-	mGameObjects.push_back(heliTale);
+	mGameObjects.push_back(body.get());        // 벡터에는 주소값(get)만 복사
+	mHeliBody = std::move(body);              // 소유권을 멤버 변수로 이동
 
-	GameObject* heliBlade = new HeliBlade();
-	heliBlade->Initialize(Framework::GetDevice());
-	heliBlade->BakeRotationX(-90.f);
-	mGameObjects.push_back(heliBlade);
+	// 2. Tale 생성
+	auto tale = std::make_unique<HeliTale>();
+	tale->Initialize(Framework::GetDevice());
+	tale->BakeRotationX(-90.f);
 
+	mGameObjects.push_back(tale.get());
+	mHeliTale = std::move(tale);
 
+	// 3. Blade 생성
+	auto blade = std::make_unique<HeliBlade>();
+	blade->Initialize(Framework::GetDevice());
+	blade->BakeRotationX(-90.f);
 
+	mGameObjects.push_back(blade.get());
+	mHeliBlade = std::move(blade);
 
 }
 
 void TestScene::Update(float dt)
 {
 	
+	// 1. 자체 회전각 누적 (static 또는 멤버 변수)
+	static float bladeAngle = 0.0f;
+	static float taleAngle = 0.0f;
+
+	bladeAngle += 1000.0f * dt; // 블레이드 회전 속도
+	taleAngle += 800.0f * dt;   // 테일 회전 속도
+
+	// 2. 부모의 위치, 회전 정보 가져오기
+	XMFLOAT3 bodyPos = mHeliBody->GetPosition();
+	XMFLOAT3 bodyRot = mHeliBody->GetRotation();
+
+	XMMATRIX mBodyRot = XMMatrixRotationRollPitchYaw(bodyRot.x, bodyRot.y, bodyRot.z);
+
+	// ---------------------------------------------
+	// 블레이드 처리
+	// ---------------------------------------------
+	// 블레이드의 회전: 부모의 회전 + 자기 자신의 Y축 회전
+	mHeliBlade->SetRotation(bodyRot.x, bodyRot.y + XMConvertToRadians(bladeAngle), bodyRot.z);
+
+	// 블레이드의 위치: 부모 위치 + 부모의 회전이 적용된 로컬 오프셋
+	XMVECTOR bladeLocalOffset = XMVectorSet(2.6f, 0.8f, 0.0f, 0.0f);
+	XMVECTOR bladeWorldOffset = XMVector3TransformNormal(bladeLocalOffset, mBodyRot);
+	XMVECTOR bladePosVec = XMLoadFloat3(&bodyPos) + bladeWorldOffset;
+
+	XMFLOAT3 bladePos;
+	XMStoreFloat3(&bladePos, bladePosVec);
+	mHeliBlade->SetPosition(bladePos);
+
+	// ---------------------------------------------
+	// 테일 처리
+	// ---------------------------------------------
+	// 테일의 회전: 부모의 회전 + 자기 자신의 X(또는 Z)축 회전
+	// (모델 방향에 따라 Z 또는 X 둘 중 하나 선택)
+	mHeliTale->SetRotation(bodyRot.x, bodyRot.y, bodyRot.z + XMConvertToRadians(taleAngle));
+
+	XMVECTOR taleLocalOffset = XMVectorSet(-6.4f, 0.7f, -0.3f, 0.0f);
+	XMVECTOR taleWorldOffset = XMVector3TransformNormal(taleLocalOffset, mBodyRot);
+	XMVECTOR talePosVec = XMLoadFloat3(&bodyPos) + taleWorldOffset;
+
+	XMFLOAT3 talePos;
+	XMStoreFloat3(&talePos, talePosVec);
+	mHeliTale->SetPosition(talePos);
+
+	// 3. 모든 객체의 기본적인 업데이트 (이때 내부적으로 변경된 Pos, Rot로 worldMatrix가 올바르게 생성됨)
 	for (const auto& obj : mGameObjects) {
 		obj->Update(dt);
 	}
-
-	
-	//헬기 블레이드와 테일이 몸체를 따라 회전하도록 설정
-	HeliBody* heliBody = nullptr;
-	for (const auto& obj : mGameObjects) {
-		heliBody = dynamic_cast<HeliBody*>(obj);
-		if (heliBody) break;
-	}
-
-	
-	for (const auto& obj : mGameObjects) {
-		HeliTale* heliTale = dynamic_cast<HeliTale*>(obj);
-		if (heliTale) {
-			heliTale->SetPosition(heliBody->GetPosition());
-			heliTale->SetRotation(heliBody->GetRotation());
-			
-		}
-	}
-
-
-	for (const auto& obj : mGameObjects) {
-		HeliBlade*  heliBlade = dynamic_cast<HeliBlade*>(obj);
-		if (heliBlade) {
-			heliBlade->SetPosition(heliBody->GetPosition());
-			heliBlade->SetRotation(heliBody->GetRotation());
-
-		}
-	}
-
 	/*if (!debugMode)
 	{
 		for (const auto& obj : mGameObjects) {
@@ -293,53 +313,39 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		}
 	}
 
-	for (const auto& obj : mGameObjects)
-	{
-		HeliTale* heliTail = dynamic_cast<HeliTale*>(obj);
-		if (heliTail != nullptr)
-		{
-			XMFLOAT3 pos = heliTail->GetPosition();
-			if (ImGui::DragFloat3("HeliTail Position", &pos.x, 0.1f))
-			{
-				// 위치와 월드 매트릭스를 함께 갱신해줌
-				heliTail->SetPosition(pos.x, pos.y, pos.z);
-			}
-			XMFLOAT3 rotVec = heliTail->GetRotation();
-			XMFLOAT3 rot = { rotVec.x, rotVec.y, rotVec.z };
-			if (ImGui::DragFloat3("HeliTail Rotation", &rot.x, 0.1f))
-			{
-				// 위치와 월드 매트릭스를 함께 갱신해줌
-				heliTail->SetRotation(rot.x, rot.y, rot.z);
-			}
-			break;
-		}
-	}
+	
+	
+	ImGui::Text("Helicopter Parts Control");
 	ImGui::Separator();
 
-	for (const auto& obj : mGameObjects)
-	{
-		HeliBlade* heliBlade = dynamic_cast<HeliBlade*>(obj);
-		if (heliBlade != nullptr)
-		{
-			XMFLOAT3 pos = heliBlade->GetPosition();
-			if (ImGui::DragFloat3("heliBlade Position", &pos.x, 0.1f))
-			{
-				// 위치와 월드 매트릭스를 함께 갱신해줌
-				heliBlade->SetPosition(pos.x, pos.y, pos.z);
-			}
-			XMFLOAT3 rotVec = heliBlade->GetRotation();
-			XMFLOAT3 rot = { rotVec.x, rotVec.y, rotVec.z };
-			if (ImGui::DragFloat3("heliBlade Rotation", &rot.x, 0.1f))
-			{
-				// 위치와 월드 매트릭스를 함께 갱신해줌
-				heliBlade->SetRotation(rot.x, rot.y, rot.z);
-			}
-			break;
-		}
-	}
+	// 람다 정의: 특정 오브젝트의 Transform UI를 그려주는 로컬 헬퍼
+	auto DrawTransformUI = [](const char* label, auto* obj) {
+		if (!obj) return;
+
+		XMFLOAT3 pos = obj->GetPosition();
+		XMFLOAT3 rot = obj->GetRotation();
+
+		// ##ID 를 사용하여 내부 레이블 중복 방지 및 UI 깔끔하게 유지
+		char bufPos[64], bufRot[64];
+		sprintf_s(bufPos, "%s Position", label);
+		sprintf_s(bufRot, "%s Rotation", label);
+
+		if (ImGui::DragFloat3(bufPos, &pos.x, 0.1f))
+			obj->SetPosition(pos);
+
+		if (ImGui::DragFloat3(bufRot, &rot.x, 0.1f))
+			obj->SetRotation(rot);
+
+		ImGui::Spacing();
+		};
+
+	
+	DrawTransformUI("Body", mHeliBody.get());
+	DrawTransformUI("Blade", mHeliBlade.get());
+	DrawTransformUI("Tail", mHeliTale.get());
+			
+		
 	ImGui::Separator();
-
-
 
 	ImGui::End();
 
@@ -404,8 +410,5 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void TestScene::Release()
 {
-    for (const auto& obj : mGameObjects) {
-        delete obj;
-    }
-    mGameObjects.clear();
+	mGameObjects.clear();
 }

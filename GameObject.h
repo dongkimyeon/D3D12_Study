@@ -14,11 +14,15 @@ public:
 
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
 
-	void GetWorldMatrix(XMFLOAT4X4& outMatrix) const { outMatrix = worldMatrix; }
+	/*-------------------------GETTER--------------------------*/
+	XMFLOAT4X4 GetWorldMatrix() const { return worldMatrix; }
 	XMFLOAT3 GetPosition() const { return position; }
 	XMFLOAT3 GetRotation() const { return rotation; }
 	XMFLOAT3 GetScale() const { return scale; }
 	XMFLOAT4 GetForwardVector() const { return forward_vector; }
+
+	/*-------------------------SETTER--------------------------*/
+	void SetWorldMatrix(const  XMFLOAT4X4 matrix) { worldMatrix = matrix; }
 
 	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
 	void SetPosition(XMFLOAT3 pos) { position = pos; }
@@ -42,12 +46,12 @@ protected:
 	XMFLOAT3 rotation;
 	XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
 	XMFLOAT4 forward_vector = { 0, 0, 1, 0 }; // 초기 전방 벡터 (Z축 방향)
-
+	XMFLOAT4X4 worldMatrix;
 protected:
     std::vector<OBJVertex> vertices;
     std::vector<uint16_t> indices;
 
-    XMFLOAT4X4 worldMatrix;
+    
 
     ComPtr<ID3D12Resource> vertexBuffer;
     ComPtr<ID3D12Resource> indexBuffer;
