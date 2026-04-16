@@ -16,7 +16,7 @@ void Cube::Initialize(ComPtr<ID3D12Device> device)
 {
     GameObject::Initialize(device);
 
-    LoadFromOBJ("Helicopter/Helibody.obj", device);
+    LoadFromOBJ("cube.obj", device);
 
     std::random_device rd;
     std::mt19937 gen(rd());
