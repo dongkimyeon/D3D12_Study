@@ -23,6 +23,8 @@
 #include <dxgi1_6.h>        // DirectX Graphics Infrastructure (어댑터 및 스왑체인 관리)
 #include <d3dcompiler.h>    // HLSL 셰이더 컴파일러
 #include <assert.h>         // 오류 검출용
+#include <dxgidebug.h>
+#pragma comment(lib, "dxguid.lib")  // GUID 사용을 위해
 
 
 #include "OBJLoader.h"
@@ -48,3 +50,23 @@
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
+
+
+enum class LogColor {
+	WHITE = 7,
+	CYAN = 11,   // [D3D12]
+	GREEN = 10,   // [Shader]
+	YELLOW = 14,   // [ImGui]
+	MAGENTA = 13,   // [System]
+	RED = 12,   // [Error]
+	GRAY = 8,    // [Release]
+};
+
+inline void PrintLog(LogColor color, const std::string& msg)
+{
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, (WORD)color);
+	std::cout << msg << std::endl;
+	SetConsoleTextAttribute(hConsole, (WORD)LogColor::WHITE); // 출력 후 흰색으로 복구
+}
+

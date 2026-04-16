@@ -12,12 +12,12 @@ public:
 	static void Render(ComPtr<ID3D12GraphicsCommandList>& commandList);
 	static void Release();
 
-	// ¾À »ý¼º ¹× µî·Ï ÅÛÇÃ¸´
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ã¸ï¿½
 	template <typename T>
 	static Scene* CreateScene(const std::wstring& name)
 	{
 		T* newScene = new T();
-		newScene->SetName(name); // Entity¿¡¼­ »ó¼Ó¹ÞÀº ÀÌ¸§ ¼³Á¤ ÇÔ¼ö
+		newScene->SetName(name); // Entityï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ó¹ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½
 		newScene->Initialize();
 
 		mScenes.insert({ name, newScene });

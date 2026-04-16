@@ -33,7 +33,7 @@ void SceneManager::Update()
 
 	if (mActiveScene != nullptr)
 	{
-		// ÇÁ·¹ÀÓ Àü¿ª µ¨Å¸ Å¸ÀÓÀ» ³Ñ°ÜÁÜ
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¸ Å¸ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ°ï¿½ï¿½ï¿½
 		mActiveScene->Update(Time::GetDeltaTime());
 		
 		if (Input::GetKeyDown(eKeyCode::ESC))

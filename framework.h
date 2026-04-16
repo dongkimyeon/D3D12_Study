@@ -1,6 +1,9 @@
 #pragma once
 #include "stdafx.h"
 
+
+
+
 class Framework
 {
 public:
@@ -51,6 +54,8 @@ private:
     ComPtr<ID3D12RootSignature> mRootSignature;
     ComPtr<ID3D12PipelineState> mPipelineState;
     ComPtr<ID3D12DescriptorHeap> mImGuiSrvHeap;
+	ComPtr<ID3D12Debug> mDebugController;
+	
 	
 	ComPtr<ID3D12Resource> mMsaaRenderTarget; // MSAA용 버퍼
 	ComPtr<ID3D12Resource> mMsaaDepthStencil;  // MSAA용 깊이 버퍼
