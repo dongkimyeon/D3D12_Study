@@ -60,21 +60,19 @@ void TestScene::Initialize()
 
 	GameObject* heliBody = new HeliBody();
 	heliBody->Initialize(Framework::GetDevice());
-	heliBody->SetPosition(0, 0, 0);
-
+	heliBody->BakeRotationX(-90.f);
 	mGameObjects.push_back(heliBody);
 
 	GameObject* heliTale = new HeliTale();
 	heliTale->Initialize(Framework::GetDevice());
-	heliTale->SetPosition(0, 0, 0);
-
+	heliTale->BakeRotationX(-90.f);
 	mGameObjects.push_back(heliTale);
 
 	GameObject* heliBlade = new HeliBlade();
 	heliBlade->Initialize(Framework::GetDevice());
-	heliBlade->SetPosition(0, 0, 0);
-	
+	heliBlade->BakeRotationX(-90.f);
 	mGameObjects.push_back(heliBlade);
+
 
 
 
@@ -260,6 +258,52 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 			break; 
 		}
 	}
+
+	for (const auto& obj : mGameObjects)
+	{
+		HeliTale* heliTail = dynamic_cast<HeliTale*>(obj);
+		if (heliTail != nullptr)
+		{
+			XMFLOAT3 pos = heliTail->position;
+			if (ImGui::DragFloat3("HeliTail Position", &pos.x, 0.1f))
+			{
+				// 위치와 월드 매트릭스를 함께 갱신해줌
+				heliTail->SetPosition(pos.x, pos.y, pos.z);
+			}
+			XMFLOAT3 rot = { heliTail->rotation.x, heliTail->rotation.y, heliTail->rotation.z };
+			if (ImGui::DragFloat3("HeliTail Rotation", &rot.x, 0.1f))
+			{
+				// 위치와 월드 매트릭스를 함께 갱신해줌
+				heliTail->SetRotation(rot.x, rot.y, rot.z);
+			}
+			break;
+		}
+	}
+	ImGui::Separator();
+
+	for (const auto& obj : mGameObjects)
+	{
+		HeliBlade* heliBlade = dynamic_cast<HeliBlade*>(obj);
+		if (heliBlade != nullptr)
+		{
+			XMFLOAT3 pos = heliBlade->position;
+			if (ImGui::DragFloat3("heliBlade Position", &pos.x, 0.1f))
+			{
+				// 위치와 월드 매트릭스를 함께 갱신해줌
+				heliBlade->SetPosition(pos.x, pos.y, pos.z);
+			}
+			XMFLOAT3 rot = { heliBlade->rotation.x, heliBlade->rotation.y, heliBlade->rotation.z };
+			if (ImGui::DragFloat3("heliBlade Rotation", &rot.x, 0.1f))
+			{
+				// 위치와 월드 매트릭스를 함께 갱신해줌
+				heliBlade->SetRotation(rot.x, rot.y, rot.z);
+			}
+			break;
+		}
+	}
+	ImGui::Separator();
+
+
 
 	ImGui::End();
 

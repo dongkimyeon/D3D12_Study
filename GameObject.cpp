@@ -121,6 +121,22 @@ void GameObject::UpdateVertexBuffer()
 }
 
 
+void GameObject::BakeRotationX(float angleDeg)
+{
+	float rad = XMConvertToRadians(angleDeg);
+	float cosA = cosf(rad);
+	float sinA = sinf(rad);
+	for (auto& v : vertices) {
+		float y = v.y, z = v.z;
+		v.y = cosA * y - sinA * z;
+		v.z = sinA * y + cosA * z;
+		float ny = v.ny, nz = v.nz;
+		v.ny = cosA * ny - sinA * nz;
+		v.nz = sinA * ny + cosA * nz;
+	}
+	UpdateVertexBuffer();
+}
+
 void GameObject::BuildNormalBuffer(ComPtr<ID3D12Device> device)
 {
 	if (indices.empty() || vertices.empty()) return;

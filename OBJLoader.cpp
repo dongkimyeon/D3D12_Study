@@ -23,7 +23,7 @@ bool OBJLoader::Load(const std::string& filename,
         iss >> prefix;
 
         if (prefix == "v") {
-            // Á¤Á¡ À§Ä¡
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
             float x, y, z;
             iss >> x >> y >> z;
             positions.push_back(x);
@@ -31,7 +31,7 @@ bool OBJLoader::Load(const std::string& filename,
             positions.push_back(z);
         }
         else if (prefix == "vn") {
-            // Á¤Á¡ ³ë¸Ö
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             float nx, ny, nz;
             iss >> nx >> ny >> nz;
             normals.push_back(nx);
@@ -39,7 +39,7 @@ bool OBJLoader::Load(const std::string& filename,
             normals.push_back(nz);
         }
         else if (prefix == "f") {
-            // ¸é (»ï°¢Çü¸¸ Áö¿ø)
+            // ï¿½ï¿½ (ï¿½ï°¢ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
             std::string v1, v2, v3;
             iss >> v1 >> v2 >> v3;
 
@@ -59,7 +59,7 @@ bool OBJLoader::Load(const std::string& filename,
         }
     }
 
-    // Á¤Á¡ µ¥ÀÌÅÍ ±¸¼º
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     vertices.clear();
     indices.clear();
 
@@ -89,6 +89,31 @@ bool OBJLoader::Load(const std::string& filename,
 
     std::cout << "Loaded " << vertices.size() << " vertices, "
         << indices.size() / 3 << " triangles" << std::endl;
+
+    // --- AABB ì„¼í„°ë§ (ë°”ìš´ë”©ë°•ìŠ¤ ì¤‘ì‹¬ì„ ì›ì ìœ¼ë¡œ) ---
+    if (!vertices.empty()) {
+        float minX =  FLT_MAX, minY =  FLT_MAX, minZ =  FLT_MAX;
+        float maxX = -FLT_MAX, maxY = -FLT_MAX, maxZ = -FLT_MAX;
+
+        // AABB ê³„ì‚°
+        for (const auto& v : vertices) {
+            if (v.x < minX) minX = v.x;  if (v.x > maxX) maxX = v.x;
+            if (v.y < minY) minY = v.y;  if (v.y > maxY) maxY = v.y;
+            if (v.z < minZ) minZ = v.z;  if (v.z > maxZ) maxZ = v.z;
+        }
+
+        // ì¤‘ì‹¬ ê³„ì‚°
+        float cx = (minX + maxX) * 0.5f;
+        float cy = (minY + maxY) * 0.5f;
+        float cz = (minZ + maxZ) * 0.5f;
+
+        // ëª¨ë“  ì •ì ì„ ì¤‘ì‹¬ë§Œí¼ ì´ë™
+        for (auto& v : vertices) {
+            v.x -= cx;
+            v.y -= cy;
+            v.z -= cz;
+        }
+    }
 
     return true;
 }

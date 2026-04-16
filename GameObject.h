@@ -24,7 +24,7 @@ public:
 	void SetRotation(float pitch, float yaw, float roll) { rotation = { pitch, yaw, roll }; }
 	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }
 
-
+	void BakeRotationX(float angleDeg);
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 
 

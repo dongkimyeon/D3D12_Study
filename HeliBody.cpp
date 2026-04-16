@@ -12,7 +12,7 @@ void HeliBody::Initialize(ComPtr<ID3D12Device> device)
 {
 	GameObject::Initialize(device);
 	LoadFromOBJ("Helicopter/Helibody.obj", device);
-	rotation = { XMConvertToRadians(-90), 0, 0 };
+
 	scale = { 0.01f, 0.01f, 0.01f };
 
 }

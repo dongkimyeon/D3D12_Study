@@ -13,7 +13,7 @@ void HeliTale::Initialize(ComPtr<ID3D12Device> device)
 {
 	GameObject::Initialize(device);
 	LoadFromOBJ("Helicopter/HeliTail.obj", device);
-	rotation = { XMConvertToRadians(-90), 0, 0 };
+	
 	scale = { 0.01f, 0.01f, 0.01f };
 
 }	
@@ -22,7 +22,7 @@ void HeliTale::Update(float dt)
 {
 	GameObject::Update(dt);
 	 
-	rotation.y += rotationSpeed * dt;
+	//rotation.y += rotationSpeed * dt;
 
 }
 
