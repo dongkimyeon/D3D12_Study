@@ -66,6 +66,7 @@ void TestScene::Initialize()
 	GameObject* heliTale = new HeliTale();
 	heliTale->Initialize(Framework::GetDevice());
 	heliTale->BakeRotationX(-90.f);
+	
 	mGameObjects.push_back(heliTale);
 
 	GameObject* heliBlade = new HeliBlade();
@@ -86,6 +87,33 @@ void TestScene::Update(float dt)
 	}
 
 	
+	//헬기 블레이드와 테일이 몸체를 따라 회전하도록 설정
+	HeliBody* heliBody = nullptr;
+	for (const auto& obj : mGameObjects) {
+		heliBody = dynamic_cast<HeliBody*>(obj);
+		if (heliBody) break;
+	}
+
+	
+	for (const auto& obj : mGameObjects) {
+		HeliTale* heliTale = dynamic_cast<HeliTale*>(obj);
+		if (heliTale) {
+			heliTale->SetPosition(heliBody->GetPosition());
+			heliTale->SetRotation(heliBody->GetRotation());
+			
+		}
+	}
+
+
+	for (const auto& obj : mGameObjects) {
+		HeliBlade*  heliBlade = dynamic_cast<HeliBlade*>(obj);
+		if (heliBlade) {
+			heliBlade->SetPosition(heliBody->GetPosition());
+			heliBlade->SetRotation(heliBody->GetRotation());
+
+		}
+	}
+
 	/*if (!debugMode)
 	{
 		for (const auto& obj : mGameObjects) {
@@ -165,10 +193,13 @@ void TestScene::Update(float dt)
 
 			// --- 평면의 정보 추출 ---
 			// 평면의 Normal은 기본적으로 (0, 1, 0)이며, 평면의 Rotation에 의해 변함
-			XMMATRIX planeRot = XMMatrixRotationRollPitchYaw(plane->rotation.x, plane->rotation.y, plane->rotation.z);
+			XMFLOAT3 planeRotVec = plane->GetRotation();
+			XMMATRIX planeRot = XMMatrixRotationRollPitchYaw(planeRotVec.x, planeRotVec.y, planeRotVec.z);
 			XMVECTOR planeNormal = XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), planeRot);
-			XMVECTOR planePos = XMLoadFloat3(&plane->position);
-			XMVECTOR cubePos = XMLoadFloat3(&cube->position);
+			XMFLOAT3 planePosVec = plane->GetPosition();
+			XMVECTOR planePos = XMLoadFloat3(&planePosVec);
+			XMFLOAT3 cubePosVec = cube->GetPosition();
+			XMVECTOR cubePos = XMLoadFloat3(&cubePosVec);
 
 			// --- 점과 평면 사이의 거리 계산 (D = n · (Q - P0)) ---
 			XMVECTOR vecToCube = XMVectorSubtract(cubePos, planePos);
@@ -177,7 +208,7 @@ void TestScene::Update(float dt)
 			float distance = XMVectorGetX(distVec);
 
 			// 큐브의 절반 크기 (바닥면까지의 거리)
-			float halfHeight = cube->scale.y * 0.5f;
+			float halfHeight = cube->GetScale().y * 0.5f;
 
 			// 충돌 조건: 거리가 큐브의 절반보다 작을 때
 			if (distance < halfHeight)
@@ -187,7 +218,9 @@ void TestScene::Update(float dt)
 				XMVECTOR correction = XMVectorScale(planeNormal, penetrationDepth);
 
 				XMVECTOR correctedPos = XMVectorAdd(cubePos, correction);
-				XMStoreFloat3(&cube->position, correctedPos);
+				XMFLOAT3 newCubePos;
+				XMStoreFloat3(&newCubePos, correctedPos);
+				cube->SetPosition(newCubePos);
 
 			}
 		}
@@ -224,7 +257,8 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 			XMFLOAT3 toObj;
 			XMVECTOR toObjVec;
 			XMVECTOR camPosVec = XMLoadFloat3(&Camera::camPos);
-			XMVECTOR objPosVec = XMLoadFloat3(&cube->position);
+			XMFLOAT3 cubePosVec2 = cube->GetPosition();
+			XMVECTOR objPosVec = XMLoadFloat3(&cubePosVec2);
 
 			toObjVec = XMVectorSubtract(objPosVec, camPosVec);
 
@@ -249,7 +283,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		Plane* plane = dynamic_cast<Plane*>(obj);
 		if (plane != nullptr)
 		{
-			XMFLOAT3 pos = plane->position;
+			XMFLOAT3 pos = plane->GetPosition();
 			if (ImGui::DragFloat3("Plane Position", &pos.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
@@ -264,13 +298,14 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		HeliTale* heliTail = dynamic_cast<HeliTale*>(obj);
 		if (heliTail != nullptr)
 		{
-			XMFLOAT3 pos = heliTail->position;
+			XMFLOAT3 pos = heliTail->GetPosition();
 			if (ImGui::DragFloat3("HeliTail Position", &pos.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
 				heliTail->SetPosition(pos.x, pos.y, pos.z);
 			}
-			XMFLOAT3 rot = { heliTail->rotation.x, heliTail->rotation.y, heliTail->rotation.z };
+			XMFLOAT3 rotVec = heliTail->GetRotation();
+			XMFLOAT3 rot = { rotVec.x, rotVec.y, rotVec.z };
 			if (ImGui::DragFloat3("HeliTail Rotation", &rot.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
@@ -286,13 +321,14 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		HeliBlade* heliBlade = dynamic_cast<HeliBlade*>(obj);
 		if (heliBlade != nullptr)
 		{
-			XMFLOAT3 pos = heliBlade->position;
+			XMFLOAT3 pos = heliBlade->GetPosition();
 			if (ImGui::DragFloat3("heliBlade Position", &pos.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
 				heliBlade->SetPosition(pos.x, pos.y, pos.z);
 			}
-			XMFLOAT3 rot = { heliBlade->rotation.x, heliBlade->rotation.y, heliBlade->rotation.z };
+			XMFLOAT3 rotVec = heliBlade->GetRotation();
+			XMFLOAT3 rot = { rotVec.x, rotVec.y, rotVec.z };
 			if (ImGui::DragFloat3("heliBlade Rotation", &rot.x, 0.1f))
 			{
 				// 위치와 월드 매트릭스를 함께 갱신해줌
@@ -342,9 +378,10 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	if (mSelectedIndex != -1)
 	{
 		GameObject* selectedObj = mGameObjects[mSelectedIndex];
-		XMFLOAT3 pos = selectedObj->position; 
-		XMFLOAT3 rot = selectedObj->rotation; 
-		XMVECTOR forward = XMLoadFloat4(&selectedObj->forward_vector);
+		XMFLOAT3 pos = selectedObj->GetPosition(); 
+		XMFLOAT3 rot = selectedObj->GetRotation(); 
+		XMFLOAT4 forwardV = selectedObj->GetForwardVector();
+		XMVECTOR forward = XMLoadFloat4(&forwardV);
 
 		ImGui::Text("Editing: Cube %d", mSelectedIndex);
 		if (ImGui::DragFloat3("Position", &pos.x, 0.1f))

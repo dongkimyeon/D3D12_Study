@@ -15,14 +15,19 @@ public:
     void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
 
 	void GetWorldMatrix(XMFLOAT4X4& outMatrix) const { outMatrix = worldMatrix; }
-	void GetPosition(XMFLOAT3& outPosition) const { outPosition = position; }
-	void GetRotation(XMFLOAT3& outRotation) const { outRotation = rotation; }
-	void GetScale(XMFLOAT3& outScale) const { outScale = scale; }
-
+	XMFLOAT3 GetPosition() const { return position; }
+	XMFLOAT3 GetRotation() const { return rotation; }
+	XMFLOAT3 GetScale() const { return scale; }
+	XMFLOAT4 GetForwardVector() const { return forward_vector; }
 
 	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
+	void SetPosition(XMFLOAT3 pos) { position = pos; }
+
 	void SetRotation(float pitch, float yaw, float roll) { rotation = { pitch, yaw, roll }; }
+	void SetRotation(XMFLOAT3 rot) { rotation = rot; }
+
 	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }
+	void SetScale(XMFLOAT3 s) { scale = s; }
 
 	void BakeRotationX(float angleDeg);
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
@@ -32,7 +37,7 @@ protected:
     // 정점 데이터를 VRAM 버퍼에 새로 업데이트하는 함수
     void UpdateVertexBuffer();
 
-public:
+protected:
     XMFLOAT3 position;
 	XMFLOAT3 rotation;
 	XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
