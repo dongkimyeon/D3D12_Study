@@ -117,7 +117,14 @@ void Framework::Render()
 	// 렌더 타겟을 MSAA 버퍼로 설정
 	mCommandList->OMSetRenderTargets(1, &msaaRtvHandle, FALSE, &msaaDsvHandle);
 
-	// (기존 뷰포트 설정 및 렌더링 호출...)
+	D3D12_VIEWPORT vp = { 0.0f, 0.0f, (float)mWindowWidth, (float)mWindowHeight, 0.0f, 1.0f };
+	D3D12_RECT scissor = { 0, 0, mWindowWidth, mWindowHeight };
+	mCommandList->RSSetViewports(1, &vp);
+	mCommandList->RSSetScissorRects(1, &scissor);
+
+	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	SceneManager::Render(mCommandList);
 
 	// --- 3. Resolve (MSAA -> 스왑체인) ---

@@ -11,7 +11,7 @@ public:
     void Run();
     void Release();
 
-    // ¾À µî ¿ÜºÎ¿¡¼­ »ç¿ëÇÒ Device Á¤Àû Á¢±ÙÀÚ
+    // ì”¬ ë“± ì™¸ë¶€ì—ì„œ ì‚¬ìš©í•  Device ì •ì  ì ‘ê·¼ì
     static ComPtr<ID3D12Device> GetDevice() { return mDevice; }
 
 private:
@@ -35,7 +35,7 @@ private:
     bool isRunning = false;
     HWND mHwnd;
 
-    static ComPtr<ID3D12Device> mDevice; // StaticÀ¸·Î º¯°æÇÏ¿© ÆíÀÇ¼º Çâ»ó
+    static ComPtr<ID3D12Device> mDevice;
     static const UINT FRAME_BUFFER_COUNT = 2;
 
     ComPtr<IDXGIFactory4> mDxgiFactory;
@@ -51,6 +51,10 @@ private:
     ComPtr<ID3D12RootSignature> mRootSignature;
     ComPtr<ID3D12PipelineState> mPipelineState;
     ComPtr<ID3D12DescriptorHeap> mImGuiSrvHeap;
+	
+	ComPtr<ID3D12Resource> mMsaaRenderTarget; // MSAAìš© ë²„í¼
+	ComPtr<ID3D12Resource> mMsaaDepthStencil;  // MSAAìš© ê¹Šì´ ë²„í¼
+	UINT m_nMsaa4xQualityLevels = 0;           // í’ˆì§ˆ ìˆ˜ì¤€ ì €ì¥ìš©
 
     UINT mRtvDescriptorSize = 0;
     HANDLE mFenceEvent = nullptr;
