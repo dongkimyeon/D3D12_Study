@@ -35,6 +35,7 @@ public:
 
 	void BakeRotationX(float angleDeg);
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
+	void SetAlpha(float alpha);
 
 
 protected:

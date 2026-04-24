@@ -4,6 +4,8 @@
 #include "TestScene.h"
 #include "LoadScene.h"
 
+#define DEBUG
+
 // DirectX 12 장치(Device)는 어플리케이션 전체에서 공유되므로 정적 멤버로 관리합니다.
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
 
@@ -25,10 +27,10 @@ void Framework::Initialize(HWND hwnd)
 	ComPtr<ID3D12Debug> debugController;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
-		PrintLog(LogColor::CYAN, "[DEBUG] D3D12 Debug Layer Enabled");
+		PrintLog(LogColor::CYAN, "[D3D12_DEBUG] D3D12 Debug Layer Enabled");
 	}
 	else {
-		PrintLog(LogColor::RED, "[DEBUG] Failed to enable D3D12 Debug Layer");
+		PrintLog(LogColor::RED, "[D3D12_DEBUG] Failed to enable D3D12 Debug Layer");
 	}
 #endif
 
@@ -277,14 +279,14 @@ void Framework::Release()
 	IDXGIDebug1* pdxgiDebug = NULL;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, __uuidof(IDXGIDebug1), (void**)&pdxgiDebug)))
 	{
-		PrintLog(LogColor::GRAY, "[DEBUG] Reporting Live DXGI Objects...");
+		PrintLog(LogColor::GRAY, "[D3D12_DEBUG] Reporting Live DXGI Objects...");
 		pdxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
 		pdxgiDebug->Release();
-		PrintLog(LogColor::GRAY, "[DEBUG] Live Object Report Complete");
+		PrintLog(LogColor::GRAY, "[D3D12_DEBUG] Live Object Report Complete");
 	}
 	else
 	{
-		PrintLog(LogColor::RED, "[DEBUG] Failed to get DXGI Debug Interface");
+		PrintLog(LogColor::RED, "[D3D12_DEBUG] Failed to get DXGI Debug Interface");
 	}
 
 }
@@ -592,6 +594,13 @@ void Framework::CompileShaders()
 	psoDesc.DepthStencilState.DepthEnable = TRUE;
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

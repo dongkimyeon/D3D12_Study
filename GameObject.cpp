@@ -68,6 +68,7 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 
 		// 기본 렌더 상태(삼각형)로 복구
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	}
 }
 
@@ -120,6 +121,13 @@ void GameObject::UpdateVertexBuffer()
     }
 }
 
+
+void GameObject::SetAlpha(float alpha)
+{
+	for (auto& v : vertices)
+		v.a = alpha;
+	UpdateVertexBuffer();
+}
 
 void GameObject::BakeRotationX(float angleDeg)
 {

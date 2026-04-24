@@ -14,9 +14,7 @@ void HeliBlade::Initialize(ComPtr<ID3D12Device> device)
 	LoadFromOBJ("Helicopter/HeliBlade.obj", device);
 
 	scale = { 0.01f, 0.01f, 0.01f };
-
-	
-
+	SetAlpha(0.5f);
 }
 
 void HeliBlade::Update(float dt)

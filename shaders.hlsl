@@ -1,8 +1,8 @@
 cbuffer Constants : register(b0)
 {
-    // ´õ ÀÌ»ó C++¿¡¼­ ´ÜÀÏ »ö»óÀ» ¹ŞÁö ¾ÊÀ¸¹Ç·Î Á¦°ÅÇÏ°Å³ª ¹«½ÃÇÏµµ·Ï Ã³¸®
-    // Çà·ÄÀÇ ¹ÙÀÌÆ® Á¤·ÄÀ» ¸ÂÃß±â À§ÇØ ´õ¹Ì º¯¼ö·Î µÎ¼Åµµ ¹«¹æÇÕ´Ï´Ù.
-    float4 dummyColor; // ±âÁ¸ÀÇ color. 
+    // ë” ì´ìƒ C++ì—ì„œ ë‹¨ì¼ ìƒ‰ìƒì„ ë°›ì§€ ì•Šìœ¼ë¯€ë¡œ ì œê±°í•˜ê±°ë‚˜ ë¬´ì‹œí•˜ë„ë¡ ì²˜ë¦¬
+    // í–‰ë ¬ì˜ ë°”ì´íŠ¸ ì •ë ¬ì„ ë§ì¶”ê¸° ìœ„í•´ ë”ë¯¸ ë³€ìˆ˜ë¡œ ë‘ì…”ë„ ë¬´ë°©í•©ë‹ˆë‹¤.
+    float4 dummyColor; // ê¸°ì¡´ì˜ color. 
     float4x4 worldViewProj;
 };
 
@@ -25,7 +25,7 @@ PSInput vs_main(VSInput input)
     PSInput output;
     output.position = mul(float4(input.pos, 1.0f), worldViewProj);
     output.normal = input.normal;
-    // ¹öÅØ½º ¹öÆÛ¿¡ µé¾îÀÖ´Â °³º° Á¤Á¡ »ö»óÀ» ÇÈ¼¿ ½¦ÀÌ´õ·Î ³Ñ±è
+    // ë²„í…ìŠ¤ ë²„í¼ì— ë“¤ì–´ìˆëŠ” ê°œë³„ ì •ì  ìƒ‰ìƒì„ í”½ì…€ ì‰ì´ë”ë¡œ ë„˜ê¹€
     output.color = input.col;
     return output;
 }
@@ -35,7 +35,8 @@ float4 ps_main(PSInput input) : SV_TARGET
     float3 lightDir = normalize(float3(1, 1, -1));
     float ndotl = max(dot(input.normal, lightDir), 0.3f);
     
-    // ÀÌÀü¿¡ °öÇÏ´ø Àü¿ª color(ÇöÀç Ç×»ó 0)¸¦ Áö¿ì°í
-    // Vertex Shader°¡ ³Ñ°ÜÁØ Á¤Á¡ °íÀ¯ÀÇ »ö»ó(input.color)°ª¿¡ ¸í¾Ï¸¸ Àû¿ëÇÕ´Ï´Ù.
-    return float4(input.color.rgb * ndotl, 1.0f);
+    // ì´ì „ì— ê³±í•˜ë˜ ì „ì—­ color(í˜„ì¬ í•­ìƒ 0)ë¥¼ ì§€ìš°ê³ 
+    // Vertex Shaderê°€ ë„˜ê²¨ì¤€ ì •ì  ê³ ìœ ì˜ ìƒ‰ìƒ(input.color)ê°’ì— ëª…ì•”ë§Œ ì ìš©í•©ë‹ˆë‹¤.
+    // ë°˜íˆ¬ëª…ì„ ìœ„í•´ íˆ¬ëª…ë„(a) ê°’ì€ input.color.a ë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
+    return float4(input.color.rgb * ndotl, input.color.a);
 }
