@@ -15,6 +15,8 @@ void HeliBody::Initialize(ComPtr<ID3D12Device> device)
 
 	scale = { 0.01f, 0.01f, 0.01f };
 	SetAlpha(0.5f);
+
+;
 }
 
 void HeliBody::Update(float dt)

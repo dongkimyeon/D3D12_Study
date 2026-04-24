@@ -165,39 +165,73 @@ void Framework::Render()
 	D3D12_CPU_DESCRIPTOR_HANDLE backBufferHandle = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	backBufferHandle.ptr += backBufferIdx * mRtvDescriptorSize;
 
-	// [3] 화면 클리어 및 렌더 타겟 설정
+	// [3] 렌더 패스 시작: 명시적 배리어로 MSAA RT와 깊이 버퍼를 렌더링 가능 상태로 전환
+	// - 첫 프레임: COMMON → RENDER_TARGET / DEPTH_WRITE
+	// - 이후 프레임: RESOLVE_SOURCE → RENDER_TARGET (MSAA RT), DEPTH_WRITE 유지 (깊이 버퍼)
+	{
+		D3D12_RESOURCE_BARRIER renderPassBarriers[2] = {};
+		int barrierCount = 0;
+
+		if (mMsaaRTState != D3D12_RESOURCE_STATE_RENDER_TARGET)
+		{
+			renderPassBarriers[barrierCount].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			renderPassBarriers[barrierCount].Transition.pResource = mMsaaRenderTarget.Get();
+			renderPassBarriers[barrierCount].Transition.StateBefore = mMsaaRTState;
+			renderPassBarriers[barrierCount].Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			renderPassBarriers[barrierCount].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			++barrierCount;
+			mMsaaRTState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		}
+
+		if (mDepthStencilState != D3D12_RESOURCE_STATE_DEPTH_WRITE)
+		{
+			renderPassBarriers[barrierCount].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			renderPassBarriers[barrierCount].Transition.pResource = mMsaaDepthStencil.Get();
+			renderPassBarriers[barrierCount].Transition.StateBefore = mDepthStencilState;
+			renderPassBarriers[barrierCount].Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			renderPassBarriers[barrierCount].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			++barrierCount;
+			mDepthStencilState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		}
+
+		if (barrierCount > 0)
+			mCommandList->ResourceBarrier(barrierCount, renderPassBarriers);
+	}
+
+	// [4] 화면 클리어 및 렌더 타겟 설정
 	float clearColor[] = { 0.05f, 0.05f, 0.1f, 1.0f };
 	mCommandList->ClearRenderTargetView(msaaRtvHandle, clearColor, 0, nullptr);
 	mCommandList->ClearDepthStencilView(msaaDsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	mCommandList->OMSetRenderTargets(1, &msaaRtvHandle, FALSE, &msaaDsvHandle);
 
-	// [4] 가위 구역(Scissor) 및 뷰포트 설정, 드로우 콜 기록
+	// [5] 가위 구역(Scissor) 및 뷰포트 설정, 드로우 콜 기록
 	D3D12_VIEWPORT vp = { 0.0f, 0.0f, (float)mWindowWidth, (float)mWindowHeight, 0.0f, 1.0f };
 	D3D12_RECT scissor = { 0, 0, mWindowWidth, mWindowHeight };
 	mCommandList->RSSetViewports(1, &vp);
 	mCommandList->RSSetScissorRects(1, &scissor);
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	
+
 	// 씬의 오브젝트들을 그립니다.
 	SceneManager::Render(mCommandList);
 
-	// [5] 리소스 배리어 (Resource Barrier) 및 MSAA Resolve
-	// MSAA 버퍼에 그려진 내용을 실제 화면 버퍼(Back Buffer)로 변환(Resolve)합니다.
-	// DX12에서는 리소스의 용도(상태)가 바뀔 때 반드시 Barrier를 통해 GPU에 알려줘야 합니다.
-	D3D12_RESOURCE_BARRIER barriers[2] = {};
-	barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barriers[0].Transition.pResource = mMsaaRenderTarget.Get();
-	barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-	barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	// [6] MSAA Resolve: MSAA 버퍼 → 백 버퍼
+	// 상태 추적 변수(mMsaaRTState, mFrameBufferStates)를 사용해 StateBefore를 명시적으로 지정합니다.
+	D3D12_RESOURCE_BARRIER resolveBarriers[2] = {};
+	resolveBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	resolveBarriers[0].Transition.pResource = mMsaaRenderTarget.Get();
+	resolveBarriers[0].Transition.StateBefore = mMsaaRTState;                        // RENDER_TARGET
+	resolveBarriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+	resolveBarriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-	barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barriers[1].Transition.pResource = mFrameBuffers[backBufferIdx].Get();
-	barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST;
-	barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	mCommandList->ResourceBarrier(2, barriers);
+	resolveBarriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	resolveBarriers[1].Transition.pResource = mFrameBuffers[backBufferIdx].Get();
+	resolveBarriers[1].Transition.StateBefore = mFrameBufferStates[backBufferIdx];   // PRESENT
+	resolveBarriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST;
+	resolveBarriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	mCommandList->ResourceBarrier(2, resolveBarriers);
+	mMsaaRTState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_RESOLVE_DEST;
 
 	// 멀티샘플링된 데이터를 일반 데이터로 합칩니다.
 	mCommandList->ResolveSubresource(
@@ -206,22 +240,26 @@ void Framework::Render()
 		DXGI_FORMAT_R8G8B8A8_UNORM
 	);
 
-	// 상태를 다시 원래대로 돌려놓습니다.
-	barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-	barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_DEST;
-	barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	mCommandList->ResourceBarrier(2, barriers);
+	// Resolve 후 백 버퍼만 PRESENT로 전환합니다.
+	// MSAA RT는 RESOLVE_SOURCE 상태로 유지하고, 다음 프레임 [3] 배리어에서 RENDER_TARGET으로 전환합니다.
+	D3D12_RESOURCE_BARRIER fbToPresentBarrier = {};
+	fbToPresentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	fbToPresentBarrier.Transition.pResource = mFrameBuffers[backBufferIdx].Get();
+	fbToPresentBarrier.Transition.StateBefore = mFrameBufferStates[backBufferIdx];   // RESOLVE_DEST
+	fbToPresentBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	fbToPresentBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	mCommandList->ResourceBarrier(1, &fbToPresentBarrier);
+	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_PRESENT;
 
-	// [6] ImGui(UI) 렌더링
-	// ImGui는 화면 버퍼에 직접 그립니다.
+	// [7] ImGui(UI) 렌더링: 백 버퍼를 RENDER_TARGET으로 전환
 	D3D12_RESOURCE_BARRIER imguiBarrier = {};
 	imguiBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	imguiBarrier.Transition.pResource = mFrameBuffers[backBufferIdx].Get();
-	imguiBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	imguiBarrier.Transition.StateBefore = mFrameBufferStates[backBufferIdx];         // PRESENT
 	imguiBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	imguiBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	mCommandList->ResourceBarrier(1, &imguiBarrier);
+	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
 	mCommandList->OMSetRenderTargets(1, &backBufferHandle, FALSE, nullptr);
 	ImGui::Render();
@@ -229,16 +267,17 @@ void Framework::Render()
 	mCommandList->SetDescriptorHeaps(1, descriptorHeaps);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
 
-	// [7] 최종 화면 출력 준비 (Present 상태로 전이)
+	// [8] 최종 화면 출력 준비 (Present 상태로 전이)
 	D3D12_RESOURCE_BARRIER presentBarrier = {};
 	presentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	presentBarrier.Transition.pResource = mFrameBuffers[backBufferIdx].Get();
-	presentBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	presentBarrier.Transition.StateBefore = mFrameBufferStates[backBufferIdx];       // RENDER_TARGET
 	presentBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	presentBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	mCommandList->ResourceBarrier(1, &presentBarrier);
+	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_PRESENT;
 
-	// [8] 명령 실행 및 프레임 교체
+	// [9] 명령 실행 및 프레임 교체
 	mCommandList->Close();
 	ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(1, ppCommandLists); // GPU에 명령 전달
@@ -489,7 +528,7 @@ void Framework::CreateFrameBuffers()
 	D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
 
 	HRESULT hr = mDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &msaaDesc,
-		D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&mMsaaRenderTarget));
+		D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&mMsaaRenderTarget));
 	if (FAILED(hr)) { PrintLog(LogColor::RED, "[D3D12] Failed to create MSAA Render Target"); exit(1); }
 	PrintLog(LogColor::CYAN, "[D3D12] MSAA Render Target Created (4x)");
 
@@ -497,6 +536,11 @@ void Framework::CreateFrameBuffers()
 	msaaRtvHandle.ptr += FRAME_BUFFER_COUNT * mRtvDescriptorSize;
 	mDevice->CreateRenderTargetView(mMsaaRenderTarget.Get(), nullptr, msaaRtvHandle);
 	PrintLog(LogColor::CYAN, "[D3D12] MSAA RTV Created");
+
+	// 생성 직후의 초기 상태를 추적 변수에 기록
+	mMsaaRTState = D3D12_RESOURCE_STATE_COMMON;
+	for (UINT i = 0; i < FRAME_BUFFER_COUNT; i++)
+		mFrameBufferStates[i] = D3D12_RESOURCE_STATE_PRESENT;
 }
 
 void Framework::CreateDepthStencilView()
@@ -515,7 +559,7 @@ void Framework::CreateDepthStencilView()
 	D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
 
 	HRESULT hr = mDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &dsDesc,
-		D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&mMsaaDepthStencil));
+		D3D12_RESOURCE_STATE_COMMON, &clearValue, IID_PPV_ARGS(&mMsaaDepthStencil));
 	if (FAILED(hr)) { PrintLog(LogColor::RED, "[D3D12] Failed to create MSAA Depth Stencil"); exit(1); }
 	PrintLog(LogColor::CYAN, "[D3D12] MSAA Depth Stencil Buffer Created (D32_FLOAT, 4x)");
 
@@ -523,6 +567,9 @@ void Framework::CreateDepthStencilView()
 	msaaDsvHandle.ptr += mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	mDevice->CreateDepthStencilView(mMsaaDepthStencil.Get(), nullptr, msaaDsvHandle);
 	PrintLog(LogColor::CYAN, "[D3D12] MSAA DSV Created");
+
+	// 생성 직후의 초기 상태를 추적 변수에 기록
+	mDepthStencilState = D3D12_RESOURCE_STATE_COMMON;
 }
 
 void Framework::CreateSyncObjects()
@@ -592,8 +639,9 @@ void Framework::CompileShaders()
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	psoDesc.RasterizerState.DepthClipEnable = TRUE;
 	psoDesc.DepthStencilState.DepthEnable = TRUE;
-	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+
 	psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
 	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -602,6 +650,7 @@ void Framework::CompileShaders()
 	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;

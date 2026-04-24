@@ -28,6 +28,7 @@ void TestScene::Initialize()
 	gizumo->Initialize(Framework::GetDevice());
 	mGameObjects.push_back(gizumo);
 
+
 	for (int i = 0; i < 2; ++i)
 	{
 		GameObject* floorPlane = new Plane();
@@ -40,10 +41,6 @@ void TestScene::Initialize()
 
 	}
 	
-	GameObject* testCube = new Cube();
-	testCube->Initialize(Framework::GetDevice());
-	testCube->SetPosition(0, 7.5f, 0);
-	mGameObjects.push_back(testCube);
 	//int gridSize = 15;       // 3x3x3 형태로 총 27개의 큐브 생성
 	//float spacing = 5.0f;   // 큐브 사이의 간격
 
@@ -58,10 +55,20 @@ void TestScene::Initialize()
 	//	}
 	//}
 
+	GameObject* testCube = new Cube();
+	testCube->Initialize(Framework::GetDevice());
+	testCube->SetPosition(0, 7.5f, 0);
+	testCube->SetAlpha(0.5f); // 반투명 설정
+	mGameObjects.push_back(testCube);
+
+
+
+
 	// 1. Body 생성
 	auto body = std::make_unique<HeliBody>(); // 스마트 포인터로 안전하게 생성
 	body->Initialize(Framework::GetDevice());
 	body->BakeRotationX(-90.f);
+
 
 	mGameObjects.push_back(body.get());        // 벡터에는 주소값(get)만 복사
 	mHeliBody = std::move(body);              // 소유권을 멤버 변수로 이동
@@ -81,6 +88,11 @@ void TestScene::Initialize()
 
 	mGameObjects.push_back(blade.get());
 	mHeliBlade = std::move(blade);
+
+
+
+
+
 
 }
 

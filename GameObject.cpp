@@ -45,6 +45,27 @@ void GameObject::Update(float dt)
 void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
 	if (indices.empty()) return; // 로드된 메쉬가 없다면 그리지 않음
+
+	// 업로드 힙 → 디폴트 힙 복사 (더티 플래그가 있을 때만 실행)
+	UploadBufferIfDirty(commandList, vertexBuffer, vertexBufferUpload,
+		mVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+		vertices.size() * sizeof(OBJVertex), mVBDirty);
+	UploadBufferIfDirty(commandList, indexBuffer, indexBufferUpload,
+		mIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,
+		indices.size() * sizeof(uint16_t), mIBDirty);
+	if (normalIndexCount > 0 && mNormalsDirty)
+	{
+		// VB와 IB를 같은 더티 조건으로 함께 업로드
+		bool vbDirty = true, ibDirty = true;
+		UploadBufferIfDirty(commandList, normalVertexBuffer, normalVertexBufferUpload,
+			mNVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+			normalIndexCount * sizeof(OBJVertex), vbDirty);
+		UploadBufferIfDirty(commandList, normalIndexBuffer, normalIndexBufferUpload,
+			mNIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,
+			normalIndexCount * sizeof(uint16_t), ibDirty);
+		mNormalsDirty = false;
+	}
+
 	XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
 	XMMATRIX mvp =  world * view * proj;
 	XMFLOAT4X4 mvpFloat;
@@ -76,49 +97,132 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
 {
     OBJLoader::Load(filename, vertices, indices);
 
+    D3D12_HEAP_PROPERTIES uploadHeap = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_HEAP_PROPERTIES defaultHeap = { D3D12_HEAP_TYPE_DEFAULT };
+
     // ---------------------------------
-    // 정점 버퍼 생성
-    UINT maxVertexBufferSize = static_cast<UINT>(vertices.size() * sizeof(OBJVertex));
-    D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-    D3D12_RESOURCE_DESC vRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxVertexBufferSize, 1, 1, 1,
-                                DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-    device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &vRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer));
+    // 정점 버퍼 생성 (업로드 스테이징 + 디폴트 힙 GPU 버퍼)
+    UINT vbSize = static_cast<UINT>(vertices.size() * sizeof(OBJVertex));
+    D3D12_RESOURCE_DESC vRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vbSize, 1, 1, 1,
+                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+    device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBufferUpload));
+    device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&vertexBuffer));
 
     vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
     vbView.StrideInBytes = sizeof(OBJVertex);
-    vbView.SizeInBytes = maxVertexBufferSize;
+    vbView.SizeInBytes = vbSize;
+    mVBState = D3D12_RESOURCE_STATE_COPY_DEST;
 
-    // 데이터를 바로 업로드합니다.
-    UpdateVertexBuffer();
+    UpdateVertexBuffer(); // 업로드 힙에 복사 + 더티 플래그 설정
 
     // ---------------------------------
-    // 인덱스 버퍼 생성
-    UINT maxIndexBufferSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
-    D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, maxIndexBufferSize, 1, 1, 1,
-                                DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-    device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &iRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBuffer));
-    
+    // 인덱스 버퍼 생성 (업로드 스테이징 + 디폴트 힙 GPU 버퍼)
+    UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+    D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize, 1, 1, 1,
+                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+    device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBufferUpload));
+    device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&indexBuffer));
+
     void* iData;
-    indexBuffer->Map(0, nullptr, &iData);
-    memcpy(iData, indices.data(), indices.size() * sizeof(uint16_t));
-    indexBuffer->Unmap(0, nullptr);
+    indexBufferUpload->Map(0, nullptr, &iData);
+    memcpy(iData, indices.data(), ibSize);
+    indexBufferUpload->Unmap(0, nullptr);
 
     ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
     ibView.Format = DXGI_FORMAT_R16_UINT;
-    ibView.SizeInBytes = maxIndexBufferSize;
+    ibView.SizeInBytes = ibSize;
+    mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
+    mIBDirty = true;
 }
 
 
+void GameObject::CreateBuffersFromData(ComPtr<ID3D12Device> device)
+{
+    D3D12_HEAP_PROPERTIES uploadHeap  = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_HEAP_PROPERTIES defaultHeap = { D3D12_HEAP_TYPE_DEFAULT };
+
+    UINT vbSize = static_cast<UINT>(vertices.size() * sizeof(OBJVertex));
+    D3D12_RESOURCE_DESC vRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vbSize, 1, 1, 1,
+                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBufferUpload));
+    device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&vertexBuffer));
+    vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+    vbView.StrideInBytes  = sizeof(OBJVertex);
+    vbView.SizeInBytes    = vbSize;
+    mVBState = D3D12_RESOURCE_STATE_COPY_DEST;
+    UpdateVertexBuffer();
+
+    UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+    D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize, 1, 1, 1,
+                                 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBufferUpload));
+    device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&indexBuffer));
+    void* iData;
+    indexBufferUpload->Map(0, nullptr, &iData);
+    memcpy(iData, indices.data(), ibSize);
+    indexBufferUpload->Unmap(0, nullptr);
+    ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+    ibView.Format         = DXGI_FORMAT_R16_UINT;
+    ibView.SizeInBytes    = ibSize;
+    mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
+    mIBDirty  = true;
+}
+
 void GameObject::UpdateVertexBuffer()
 {
-    if (vertexBuffer && !vertices.empty())
+    if (vertexBufferUpload && !vertices.empty())
     {
         void* vData;
-        // 업로드 힙이므로 직접 Map하여 갱신 가능합니다.
-        vertexBuffer->Map(0, nullptr, &vData);
+        vertexBufferUpload->Map(0, nullptr, &vData);
         memcpy(vData, vertices.data(), vertices.size() * sizeof(OBJVertex));
-        vertexBuffer->Unmap(0, nullptr);
+        vertexBufferUpload->Unmap(0, nullptr);
+        mVBDirty = true;
     }
+}
+
+void GameObject::UploadBufferIfDirty(
+    ComPtr<ID3D12GraphicsCommandList>& cmdList,
+    ComPtr<ID3D12Resource>& gpuBuf,
+    ComPtr<ID3D12Resource>& uploadBuf,
+    D3D12_RESOURCE_STATES& currentState,
+    D3D12_RESOURCE_STATES targetState,
+    UINT64 byteSize,
+    bool& dirty)
+{
+    if (!dirty || !gpuBuf || !uploadBuf) return;
+
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = gpuBuf.Get();
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    // 이미 다른 상태라면 먼저 COPY_DEST로 전환
+    if (currentState != D3D12_RESOURCE_STATE_COPY_DEST)
+    {
+        barrier.Transition.StateBefore = currentState;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+        cmdList->ResourceBarrier(1, &barrier);
+    }
+
+    cmdList->CopyBufferRegion(gpuBuf.Get(), 0, uploadBuf.Get(), 0, byteSize);
+
+    // 복사 후 렌더링에 사용할 상태로 전환
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barrier.Transition.StateAfter = targetState;
+    cmdList->ResourceBarrier(1, &barrier);
+
+    currentState = targetState;
+    dirty = false;
 }
 
 
@@ -196,33 +300,46 @@ void GameObject::BuildNormalBuffer(ComPtr<ID3D12Device> device)
 	normalIndexCount = static_cast<UINT>(normalIndices.size());
 
 	// ---------------------------------
-	// 법선 정점/인덱스 버퍼 생성
-	UINT vbSize = static_cast<UINT>(normalVertices.size() * sizeof(OBJVertex));
-	D3D12_HEAP_PROPERTIES heap = { D3D12_HEAP_TYPE_UPLOAD };
-	D3D12_RESOURCE_DESC vbRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vbSize, 1, 1, 1,
+	// 법선 정점/인덱스 버퍼 생성 (업로드 스테이징 + 디폴트 힙 GPU 버퍼)
+	D3D12_HEAP_PROPERTIES uploadHeap  = { D3D12_HEAP_TYPE_UPLOAD };
+	D3D12_HEAP_PROPERTIES defaultHeap = { D3D12_HEAP_TYPE_DEFAULT };
+
+	UINT nvbSize = static_cast<UINT>(normalVertices.size() * sizeof(OBJVertex));
+	D3D12_RESOURCE_DESC vbRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, nvbSize, 1, 1, 1,
 								  DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-	device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &vbRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalVertexBuffer));
+
+	device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &vbRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalVertexBufferUpload));
+	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &vbRes,
+		D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&normalVertexBuffer));
+
+	void* vbData;
+	normalVertexBufferUpload->Map(0, nullptr, &vbData);
+	memcpy(vbData, normalVertices.data(), nvbSize);
+	normalVertexBufferUpload->Unmap(0, nullptr);
 
 	normalVbView.BufferLocation = normalVertexBuffer->GetGPUVirtualAddress();
 	normalVbView.StrideInBytes = sizeof(OBJVertex);
-	normalVbView.SizeInBytes = vbSize;
+	normalVbView.SizeInBytes = nvbSize;
+	mNVBState = D3D12_RESOURCE_STATE_COPY_DEST;
 
-	void* vbData;
-	normalVertexBuffer->Map(0, nullptr, &vbData);
-	memcpy(vbData, normalVertices.data(), vbSize);
-	normalVertexBuffer->Unmap(0, nullptr);
-
-	UINT ibSize = static_cast<UINT>(normalIndices.size() * sizeof(uint16_t));
-	D3D12_RESOURCE_DESC ibRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize, 1, 1, 1,
+	UINT nibSize = static_cast<UINT>(normalIndices.size() * sizeof(uint16_t));
+	D3D12_RESOURCE_DESC ibRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, nibSize, 1, 1, 1,
 								  DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-	device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &ibRes, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalIndexBuffer));
+
+	device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &ibRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalIndexBufferUpload));
+	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &ibRes,
+		D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&normalIndexBuffer));
 
 	void* ibData;
-	normalIndexBuffer->Map(0, nullptr, &ibData);
-	memcpy(ibData, normalIndices.data(), ibSize);
-	normalIndexBuffer->Unmap(0, nullptr);
+	normalIndexBufferUpload->Map(0, nullptr, &ibData);
+	memcpy(ibData, normalIndices.data(), nibSize);
+	normalIndexBufferUpload->Unmap(0, nullptr);
 
 	normalIbView.BufferLocation = normalIndexBuffer->GetGPUVirtualAddress();
 	normalIbView.Format = DXGI_FORMAT_R16_UINT;
-	normalIbView.SizeInBytes = ibSize;
+	normalIbView.SizeInBytes = nibSize;
+	mNIBState = D3D12_RESOURCE_STATE_COPY_DEST;
+	mNormalsDirty = true;
 }

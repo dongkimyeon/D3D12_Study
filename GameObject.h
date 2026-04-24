@@ -39,8 +39,21 @@ public:
 
 
 protected:
-    // 정점 데이터를 VRAM 버퍼에 새로 업데이트하는 함수
+    // 업로드 힙 스테이징 버퍼를 갱신하고 더티 플래그 설정
     void UpdateVertexBuffer();
+
+    // vertices/indices로부터 업로드+디폴트 힙 버퍼를 생성 (Gizumo, Plane 등 직접 버텍스 설정 시 사용)
+    void CreateBuffersFromData(ComPtr<ID3D12Device> device);
+
+    // 더티 버퍼를 디폴트 힙으로 복사하고 배리어를 전환하는 헬퍼
+    void UploadBufferIfDirty(
+        ComPtr<ID3D12GraphicsCommandList>& cmdList,
+        ComPtr<ID3D12Resource>& gpuBuf,
+        ComPtr<ID3D12Resource>& uploadBuf,
+        D3D12_RESOURCE_STATES& currentState,
+        D3D12_RESOURCE_STATES targetState,
+        UINT64 byteSize,
+        bool& dirty);
 
 protected:
     XMFLOAT3 position;
@@ -54,12 +67,15 @@ protected:
 
     
 
+    // 렌더링용 디폴트 힙 버퍼
     ComPtr<ID3D12Resource> vertexBuffer;
     ComPtr<ID3D12Resource> indexBuffer;
     D3D12_VERTEX_BUFFER_VIEW vbView;
     D3D12_INDEX_BUFFER_VIEW ibView;
 
-
+    // CPU→GPU 복사용 업로드 힙 스테이징 버퍼
+    ComPtr<ID3D12Resource> vertexBufferUpload;
+    ComPtr<ID3D12Resource> indexBufferUpload;
 
 	// 노멀 라인 렌더링을 위한 멤버 변수들
 	ComPtr<ID3D12Resource> normalVertexBuffer;
@@ -67,6 +83,21 @@ protected:
 	D3D12_VERTEX_BUFFER_VIEW normalVbView = {};
 	D3D12_INDEX_BUFFER_VIEW normalIbView = {};
 	UINT normalIndexCount = 0;
+
+    // 노멀 버퍼 업로드 힙 스테이징 버퍼
+	ComPtr<ID3D12Resource> normalVertexBufferUpload;
+	ComPtr<ID3D12Resource> normalIndexBufferUpload;
+
+    // 디폴트 힙 버퍼 현재 상태 추적
+    D3D12_RESOURCE_STATES mVBState    = D3D12_RESOURCE_STATE_COPY_DEST;
+    D3D12_RESOURCE_STATES mIBState    = D3D12_RESOURCE_STATE_COPY_DEST;
+    D3D12_RESOURCE_STATES mNVBState   = D3D12_RESOURCE_STATE_COPY_DEST;
+    D3D12_RESOURCE_STATES mNIBState   = D3D12_RESOURCE_STATE_COPY_DEST;
+
+    // 업로드 힙→디폴트 힙 복사 필요 여부
+    bool mVBDirty      = false;
+    bool mIBDirty      = false;
+    bool mNormalsDirty = false;
 
 
 };

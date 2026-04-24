@@ -43,6 +43,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 	case WM_KEYDOWN:
 		if (wparam == VK_ESCAPE) DestroyWindow(hwnd);
+	
 		return 0;
 
 	case WM_DESTROY:
@@ -70,11 +71,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		0, 0, hInstance, 0);
 	ShowWindow(hwnd, nCmdShow);
 
-	Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
-	gFramework = &framework;   // ✅ 포인터 등록 (기존 코드에 누락되어 있었음)
-	framework.Initialize(hwnd);
-	framework.Run();
+	{
+		Framework framework(WINDOW_WIDTH, WINDOW_HEIGHT);
+		gFramework = &framework;
+		framework.Initialize(hwnd);
+		framework.Run();
+	} 
 
+	system("pause");
 	FreeConsole();
 	return 0;
 }

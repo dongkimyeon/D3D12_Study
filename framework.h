@@ -72,4 +72,9 @@ private:
     UINT mRtvDescriptorSize = 0;               // RTV 서술자 한 개의 크기
     HANDLE mFenceEvent = nullptr;              // 펜스 이벤트 핸들
     UINT64 mFenceValue = 0;                    // 펜스 값 (동기화 확인용)
+
+	// 리소스 배리어 상태 추적 변수 (암시적 가정 대신 명시적으로 현재 상태를 기록)
+	D3D12_RESOURCE_STATES mMsaaRTState = D3D12_RESOURCE_STATE_COMMON;
+	D3D12_RESOURCE_STATES mDepthStencilState = D3D12_RESOURCE_STATE_COMMON;
+	D3D12_RESOURCE_STATES mFrameBufferStates[FRAME_BUFFER_COUNT] = {};
 };

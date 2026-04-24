@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -E \"\\\\.\\(exe|dll|png|jpg|bmp\\)$\")"
+      "Bash(grep -E \"\\\\.\\(exe|dll|png|jpg|bmp\\)$\")",
+      "Bash(MSBuild.exe *.sln /p:Configuration=Debug /p:Platform=x64 /t:Build /v:minimal)",
+      "Bash(where MSBuild)",
+      "Read(//c/Program Files/Microsoft Visual Studio/**)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/amd64/MSBuild.exe\" \"C:/Github-repo/D3D12_Study\" /p:Configuration=Debug /p:Platform=x64 /t:Build /v:minimal)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/amd64/MSBuild.exe\" \"C:/Github-repo/D3D12_Study/D3D12_Study.vcxproj\" /p:Configuration=Debug /p:Platform=x64 /t:Build /v:minimal)",
+      "Bash(powershell *)"
     ]
   }
 }
