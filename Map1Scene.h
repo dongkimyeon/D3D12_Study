@@ -1,8 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "GameObject.h"
-
-
+#include "Cube.h"
 
 class Map1Scene : public Scene
 {
@@ -17,5 +16,5 @@ public:
 
 private:
 	std::vector<GameObject*> mGameObjects;
-
+	std::vector<Cube*>       mWallCubes;   // 충돌 검사용 벽 큐브 목록
 };

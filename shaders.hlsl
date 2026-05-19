@@ -25,8 +25,8 @@ PSInput vs_main(VSInput input)
     PSInput output;
     output.position = mul(float4(input.pos, 1.0f), worldViewProj);
     output.normal = input.normal;
-    // 버텍스 버퍼에 들어있는 개별 정점 색상을 픽셀 쉐이더로 넘김
-    output.color = input.col;
+    // dummyColor is (1,1,1,1) for normal objects, per-instance tint for Cube
+    output.color = input.col * dummyColor;
     return output;
 }
 

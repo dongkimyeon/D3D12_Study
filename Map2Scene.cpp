@@ -12,7 +12,7 @@
 
 extern bool debugMode;
 
-Map2Scene::Map2Scene	()
+Map2Scene::Map2Scene()
 {
 
 }
@@ -403,5 +403,11 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void Map2Scene::Release()
 {
+	for (auto obj : mGameObjects)
+	{
+		// 스마트 포인터 멤버와 겹치는 객체는 소유권이 unique_ptr에 있으므로 제외
+		if (obj != mHeliBody.get() && obj != mHeliBlade.get() && obj != mHeliTale.get())
+			delete obj;
+	}
 	mGameObjects.clear();
 }

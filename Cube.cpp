@@ -1,8 +1,92 @@
 #include "stdafx.h"
 #include "Cube.h"
-#include <random>
-#include <map>
-#include <tuple>
+
+// ---- Static member definitions ----
+ComPtr<ID3D12Resource> Cube::sVB;
+ComPtr<ID3D12Resource> Cube::sIB;
+ComPtr<ID3D12Resource> Cube::sVBUpload;
+ComPtr<ID3D12Resource> Cube::sIBUpload;
+D3D12_VERTEX_BUFFER_VIEW Cube::sVbView = {};
+D3D12_INDEX_BUFFER_VIEW  Cube::sIbView = {};
+UINT    Cube::sIndexCount = 0;
+int     Cube::sRefCount   = 0;
+D3D12_RESOURCE_STATES Cube::sVBState  = D3D12_RESOURCE_STATE_COPY_DEST;
+D3D12_RESOURCE_STATES Cube::sIBState  = D3D12_RESOURCE_STATE_COPY_DEST;
+bool    Cube::sVBDirty = false;
+bool    Cube::sIBDirty = false;
+
+// ---------------------------------------------------------------------------
+// LoadSharedMesh: called once on the first Cube::Initialize
+//   - Loads cube.obj into one GPU VB + IB shared by all instances
+//   - Vertex colors are set to white so per-cube tint works cleanly
+// ---------------------------------------------------------------------------
+void Cube::LoadSharedMesh(ComPtr<ID3D12Device> device)
+{
+    std::vector<OBJVertex> verts;
+    std::vector<uint16_t>  inds;
+    OBJLoader::Load("cube.obj", verts, inds);
+
+    // Neutral white vertex color: per-cube tint is passed via root constants
+    for (auto& v : verts) { v.r = v.g = v.b = v.a = 1.0f; }
+
+    D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_HEAP_PROPERTIES def    = { D3D12_HEAP_TYPE_DEFAULT };
+
+    // Vertex buffer
+    UINT vbSize = (UINT)(verts.size() * sizeof(OBJVertex));
+    D3D12_RESOURCE_DESC vRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vbSize,
+        1, 1, 1, DXGI_FORMAT_UNKNOWN, {1,0},
+        D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+    device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sVBUpload));
+    device->CreateCommittedResource(&def, D3D12_HEAP_FLAG_NONE, &vRes,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&sVB));
+
+    void* mapped;
+    sVBUpload->Map(0, nullptr, &mapped);
+    memcpy(mapped, verts.data(), vbSize);
+    sVBUpload->Unmap(0, nullptr);
+
+    sVbView.BufferLocation = sVB->GetGPUVirtualAddress();
+    sVbView.StrideInBytes  = sizeof(OBJVertex);
+    sVbView.SizeInBytes    = vbSize;
+    sVBState = D3D12_RESOURCE_STATE_COPY_DEST;
+    sVBDirty = true;
+
+    // Index buffer
+    UINT ibSize = (UINT)(inds.size() * sizeof(uint16_t));
+    D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize,
+        1, 1, 1, DXGI_FORMAT_UNKNOWN, {1,0},
+        D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+    device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sIBUpload));
+    device->CreateCommittedResource(&def, D3D12_HEAP_FLAG_NONE, &iRes,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&sIB));
+
+    sIBUpload->Map(0, nullptr, &mapped);
+    memcpy(mapped, inds.data(), ibSize);
+    sIBUpload->Unmap(0, nullptr);
+
+    sIbView.BufferLocation = sIB->GetGPUVirtualAddress();
+    sIbView.Format         = DXGI_FORMAT_R16_UINT;
+    sIbView.SizeInBytes    = ibSize;
+    sIBState = D3D12_RESOURCE_STATE_COPY_DEST;
+    sIBDirty = true;
+
+    sIndexCount = (UINT)inds.size();
+}
+
+void Cube::UnloadSharedMesh()
+{
+    sVB.Reset();  sVBUpload.Reset();
+    sIB.Reset();  sIBUpload.Reset();
+    sIndexCount = 0;
+    sVBDirty = sIBDirty = false;
+}
+
+// ---------------------------------------------------------------------------
 
 Cube::Cube()
 {
@@ -10,84 +94,88 @@ Cube::Cube()
 
 Cube::~Cube()
 {
+    if (--sRefCount == 0)
+        UnloadSharedMesh();
 }
 
 void Cube::Initialize(ComPtr<ID3D12Device> device)
 {
-    GameObject::Initialize(device);
+    // Load shared mesh on first instance; subsequent instances skip the load
+    if (sRefCount == 0)
+        LoadSharedMesh(device);
+    ++sRefCount;
 
-    LoadFromOBJ("cube.obj", device);
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dis(0.0f, 1.0f);
-
-    // 위치(x, y, z)를 묶어서 동일한 정점인지 식별할 맵 생성
-    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> colorMap;
-
-    for (auto& v : vertices)
-    {
-        // 부동소수점 오차를 방지하기 위해 소수점 둘째 자리까지 반올림하여 비교 그룹을 만듬
-        float kx = round(v.x * 100.0f);
-        float ky = round(v.y * 100.0f);
-        float kz = round(v.z * 100.0f);
-        auto key = std::make_tuple(kx, ky, kz);
-
-        // 해당 좌표에 아직 색상이 할당되지 않았다면 새로 무작위 색상 생성
-        if (colorMap.find(key) == colorMap.end())
-        {
-            colorMap[key] = std::make_tuple(dis(gen), dis(gen), dis(gen));
-        }
-
-        // 해당 위치로 지정된 공통 색상을 정점에 적용
-        v.r = std::get<0>(colorMap[key]);
-        v.g = std::get<1>(colorMap[key]);
-        v.b = std::get<2>(colorMap[key]);
-        v.a = 1.0f;
-    }
-
-    // 변경된 데이터를 VRAM에 다시 업로드
-    UpdateVertexBuffer();
-	BuildNormalBuffer(device);
+    // Randomize a flat color for this cube instance
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_real_distribution<float> dis(0.3f, 1.0f);
+    mColor = { dis(gen), dis(gen), dis(gen), 1.0f };
 }
 
 void Cube::Update(float dt)
 {
-
-	//{
-	//	// 1. 현재의 Pitch, Yaw, Roll을 기반으로 회전 행렬 생성
-	//	XMMATRIX rotationMat = XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
-
-
-	//	XMVECTOR baseForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f); //기준 전방 벡터 Z축
-	//	XMVECTOR lookDirection = XMVector3TransformNormal(baseForward, rotationMat);
-
-
-	//	//계산한 바라보는 벡터 방향을 forward_vector에 저장
-	//	XMStoreFloat4(&forward_vector, lookDirection);
-
-	//	float speed = 10.0f;
-	//	XMVECTOR moveVector = lookDirection * speed * dt;
-	//	//해당 바라 보는 벡터 방향으로 스칼라 곱연산
-
-	//	//현재 위치를 XMVECTOR로 변환(레지스터로 연산을 빠르게 하기위함)
-	//	XMVECTOR currentPosition = XMLoadFloat3(&position);
-
-	//	//현재 위치 벡터에 이동 벡터를 더하여 새로운 위치 계산
-	//	currentPosition = XMVectorAdd(currentPosition, moveVector);
-
-	//	//바뀐 위치 VECTOR를 다시 XMFLOAT3로 변환하여 position에 저장
-	//	XMStoreFloat3(&position, currentPosition);
-	//}
-
-
-	GameObject::Update(dt);
+    GameObject::Update(dt);
+    UpdateAABB();
 }
-	
-	
 
+void Cube::UpdateAABB()
+{
+    mAABB.Center  = position;
+    mAABB.Extents = { scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f };
+}
 
 void Cube::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
-    GameObject::Render(commandList, view, proj);
+    if (sIndexCount == 0) return;
+
+    // Upload shared VB/IB to GPU on the first Render call (dirty flag → false after)
+    auto flushIfDirty = [&](ComPtr<ID3D12Resource>& gpu, ComPtr<ID3D12Resource>& staging,
+        D3D12_RESOURCE_STATES& state, D3D12_RESOURCE_STATES target,
+        UINT64 byteSize, bool& dirty)
+    {
+        if (!dirty) return;
+        if (state != D3D12_RESOURCE_STATE_COPY_DEST)
+        {
+            D3D12_RESOURCE_BARRIER b = {};
+            b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            b.Transition.pResource   = gpu.Get();
+            b.Transition.StateBefore = state;
+            b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
+            b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            commandList->ResourceBarrier(1, &b);
+        }
+        commandList->CopyBufferRegion(gpu.Get(), 0, staging.Get(), 0, byteSize);
+        {
+            D3D12_RESOURCE_BARRIER b = {};
+            b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            b.Transition.pResource   = gpu.Get();
+            b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            b.Transition.StateAfter  = target;
+            b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            commandList->ResourceBarrier(1, &b);
+        }
+        state = target;
+        dirty = false;
+    };
+
+    flushIfDirty(sVB, sVBUpload, sVBState,
+        D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+        sVbView.SizeInBytes, sVBDirty);
+    flushIfDirty(sIB, sIBUpload, sIBState,
+        D3D12_RESOURCE_STATE_INDEX_BUFFER,
+        sIbView.SizeInBytes, sIBDirty);
+
+    // Root constants layout (20 floats total):
+    //   [0..3]  = mColor (per-instance tint, read as dummyColor in shader)
+    //   [4..19] = MVP matrix (transposed)
+    XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
+    XMMATRIX mvp   = world * view * proj;
+    XMFLOAT4X4 mvpT;
+    XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
+
+    commandList->SetGraphicsRoot32BitConstants(0, 4,  &mColor,       0);
+    commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0], 4);
+
+    commandList->IASetVertexBuffers(0, 1, &sVbView);
+    commandList->IASetIndexBuffer(&sIbView);
+    commandList->DrawIndexedInstanced(sIndexCount, 1, 0, 0, 0);
 }

@@ -17,7 +17,7 @@ public:
 	{
 		T* newScene = new T();
 		newScene->SetName(name); 
-		newScene->Initialize();
+		//newScene->Initialize();
 
 		mScenes.insert({ name, newScene });
 		return newScene;

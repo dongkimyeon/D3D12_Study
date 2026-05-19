@@ -71,7 +71,10 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 	XMFLOAT4X4 mvpFloat;
 	XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp));
 
-	// 색상과 변환행렬을 루트 상수로 전달 (루트 파라미터가 0 인덱스 배열 하나로 구성되어 있다고 가정)
+	// dummyColor slot: white (1,1,1,1) keeps vertex colors unchanged
+	// (Cube::Render overrides this with a per-instance tint color)
+	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
+	commandList->SetGraphicsRoot32BitConstants(0, 4,  white,             0);
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
 
 	commandList->IASetVertexBuffers(0, 1, &vbView);
