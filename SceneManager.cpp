@@ -2,6 +2,7 @@
 #include "SceneManager.h"
 #include "Time.h"
 #include "Input.h"
+#include "GameObject.h"
 
 std::map<std::wstring, Scene*> SceneManager::mScenes;
 Scene* SceneManager::mActiveScene = nullptr;
@@ -37,6 +38,9 @@ void SceneManager::Update()
 		
 		mActiveScene->Update(Time::GetDeltaTime());
 		
+		if (Input::GetKeyDown(eKeyCode::F1))
+			GameObject::sShowAABB = !GameObject::sShowAABB;
+
 		if (Input::GetKeyDown(eKeyCode::ESC))
 		{
 			Release();

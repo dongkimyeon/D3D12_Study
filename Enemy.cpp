@@ -155,6 +155,9 @@ void Enemy::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view
 	commandList->IASetVertexBuffers(0, 1, &sVbView);
 	commandList->IASetIndexBuffer(&sIbView);
 	commandList->DrawIndexedInstanced(sIndexCount, 1, 0, 0, 0);
+
+	if (sShowAABB)
+		RenderAABB(commandList, view, proj);
 }
 
 DirectX::BoundingBox Enemy::GetWorldAABB() const

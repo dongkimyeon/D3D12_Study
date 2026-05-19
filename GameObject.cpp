@@ -1,5 +1,12 @@
 #include "stdafx.h"
 #include "GameObject.h"
+#include "framework.h"
+
+bool                     GameObject::sShowAABB  = false;
+ComPtr<ID3D12Resource>   GameObject::sAABBVB;
+ComPtr<ID3D12Resource>   GameObject::sAABBIB;
+D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBVbView = {};
+D3D12_INDEX_BUFFER_VIEW  GameObject::sAABBIbView = {};
 
 GameObject::GameObject()
 {
@@ -89,11 +96,11 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 		commandList->IASetVertexBuffers(0, 1, &normalVbView);
 		commandList->IASetIndexBuffer(&normalIbView);
 		commandList->DrawIndexedInstanced(normalIndexCount, 1, 0, 0, 0);
-
-		// 기본 렌더 상태(삼각형)로 복구
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	}
+
+	if (sShowAABB)
+		RenderAABB(commandList, view, proj);
 }
 
 void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device)
@@ -228,6 +235,100 @@ void GameObject::UploadBufferIfDirty(
     dirty = false;
 }
 
+
+void GameObject::EnsureAABBMesh()
+{
+	if (sAABBVB != nullptr) return;
+
+	auto device = Framework::GetDevice();
+
+	// ±0.5 단위 박스 (8정점) — 노멀을 조명 방향으로 설정해 최대 밝기 보장
+	static const float c = 0.5774f;
+	OBJVertex verts[8] = {
+		{-0.5f,-0.5f,-0.5f, c,c,-c, 0,1,0,1},
+		{ 0.5f,-0.5f,-0.5f, c,c,-c, 0,1,0,1},
+		{ 0.5f,-0.5f, 0.5f, c,c,-c, 0,1,0,1},
+		{-0.5f,-0.5f, 0.5f, c,c,-c, 0,1,0,1},
+		{-0.5f, 0.5f,-0.5f, c,c,-c, 0,1,0,1},
+		{ 0.5f, 0.5f,-0.5f, c,c,-c, 0,1,0,1},
+		{ 0.5f, 0.5f, 0.5f, c,c,-c, 0,1,0,1},
+		{-0.5f, 0.5f, 0.5f, c,c,-c, 0,1,0,1},
+	};
+	uint16_t inds[24] = {
+		0,1, 1,2, 2,3, 3,0,  // 아랫면
+		4,5, 5,6, 6,7, 7,4,  // 윗면
+		0,4, 1,5, 2,6, 3,7   // 기둥
+	};
+
+	D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+
+	UINT vbSize = sizeof(verts);
+	D3D12_RESOURCE_DESC vRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, vbSize,
+		1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &vRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sAABBVB));
+	void* mapped;
+	sAABBVB->Map(0, nullptr, &mapped);
+	memcpy(mapped, verts, vbSize);
+	sAABBVB->Unmap(0, nullptr);
+	sAABBVbView.BufferLocation = sAABBVB->GetGPUVirtualAddress();
+	sAABBVbView.SizeInBytes    = vbSize;
+	sAABBVbView.StrideInBytes  = sizeof(OBJVertex);
+
+	UINT ibSize = sizeof(inds);
+	D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize,
+		1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &iRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sAABBIB));
+	sAABBIB->Map(0, nullptr, &mapped);
+	memcpy(mapped, inds, ibSize);
+	sAABBIB->Unmap(0, nullptr);
+	sAABBIbView.BufferLocation = sAABBIB->GetGPUVirtualAddress();
+	sAABBIbView.Format         = DXGI_FORMAT_R16_UINT;
+	sAABBIbView.SizeInBytes    = ibSize;
+}
+
+DirectX::BoundingBox GameObject::GetWorldAABB() const
+{
+	if (vertices.empty()) return {};
+	XMFLOAT3 vmin = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
+	XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+	for (const auto& v : vertices) {
+		vmin.x = std::min(vmin.x, v.x); vmax.x = std::max(vmax.x, v.x);
+		vmin.y = std::min(vmin.y, v.y); vmax.y = std::max(vmax.y, v.y);
+		vmin.z = std::min(vmin.z, v.z); vmax.z = std::max(vmax.z, v.z);
+	}
+	DirectX::BoundingBox local(
+		{ (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f },
+		{ (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f });
+	DirectX::BoundingBox world;
+	local.Transform(world, XMLoadFloat4x4(&worldMatrix));
+	return world;
+}
+
+void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
+{
+	EnsureAABBMesh();
+
+	DirectX::BoundingBox aabb = GetWorldAABB();
+	if (aabb.Extents.x == 0 && aabb.Extents.y == 0 && aabb.Extents.z == 0) return;
+
+	XMMATRIX world = XMMatrixScaling(aabb.Extents.x * 2.f, aabb.Extents.y * 2.f, aabb.Extents.z * 2.f)
+	               * XMMatrixTranslation(aabb.Center.x, aabb.Center.y, aabb.Center.z);
+	XMMATRIX mvp = world * view * proj;
+	XMFLOAT4X4 mvpT;
+	XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
+
+	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
+	commandList->SetGraphicsRoot32BitConstants(0, 4,  white,          0);
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0], 4);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	commandList->IASetVertexBuffers(0, 1, &sAABBVbView);
+	commandList->IASetIndexBuffer(&sAABBIbView);
+	commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
 
 void GameObject::SetAlpha(float alpha)
 {

@@ -13,6 +13,7 @@ public:
 
     void SetColor(XMFLOAT4 color) { mColor = color; }
     const DirectX::BoundingBox& GetAABB() const { return mAABB; }
+    virtual DirectX::BoundingBox GetWorldAABB() const override;
 
     // 씬 Initialize/Release에서 명시적으로 호출
     static void LoadSharedMesh(ComPtr<ID3D12Device> device);

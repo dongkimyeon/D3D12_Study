@@ -4,6 +4,7 @@
 #include <random>
 #include "Camera.h"
 #include "Player.h"
+#include "Bullet.h"
 
 
 Map1Scene::Map1Scene() {}
@@ -111,6 +112,13 @@ void Map1Scene::Initialize()
 	enemy->SetScale(0.04f, 0.04f, 0.04f);
 	mEnemies.push_back(enemy);
 	mGameObjects.push_back(enemy);
+
+	Bullet* bullet = new Bullet();
+	bullet->Initialize(Framework::GetDevice());
+	bullet->SetPosition(0.0f, 5.0f, 2.0f);
+	
+	mGameObjects.push_back(bullet);
+
 }
 
 void Map1Scene::Update(float dt)

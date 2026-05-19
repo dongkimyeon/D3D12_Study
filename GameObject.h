@@ -39,6 +39,11 @@ public:
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 	void SetAlpha(float alpha);
 
+	// AABB 와이어프레임 디버그
+	static bool sShowAABB;
+	virtual DirectX::BoundingBox GetWorldAABB() const;
+	void RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
+
 
 protected:
     // 업로드 힙 스테이징 버퍼를 갱신하고 더티 플래그 설정
@@ -101,5 +106,10 @@ protected:
     bool mIBDirty      = false;
     bool mNormalsDirty = false;
 
-
+    // AABB 단위 박스 와이어프레임 (모든 인스턴스 공유)
+    static void EnsureAABBMesh();
+    static ComPtr<ID3D12Resource>   sAABBVB;
+    static ComPtr<ID3D12Resource>   sAABBIB;
+    static D3D12_VERTEX_BUFFER_VIEW sAABBVbView;
+    static D3D12_INDEX_BUFFER_VIEW  sAABBIbView;
 };
