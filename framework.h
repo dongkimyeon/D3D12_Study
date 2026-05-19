@@ -21,6 +21,9 @@ public:
 
     // 씬 등 외부에서 사용할 Device 정적 접근자 (DX12의 핵심 객체)
     static ComPtr<ID3D12Device> GetDevice() { return mDevice; }
+    static HWND    GetHwnd()   { return sHwnd; }
+    static int     GetWidth()  { return sWidth; }
+    static int     GetHeight() { return sHeight; }
 
 private:
     // 초기화 단계별 세부 함수
@@ -45,6 +48,11 @@ private:
     HWND mHwnd;
 	BOOL isFullScreen = false;
 	bool mIsResizing = false;  
+    // 창 정보 정적 접근 (씬에서 레이 피킹 등에 사용)
+    static HWND sHwnd;
+    static int  sWidth;
+    static int  sHeight;
+
     // DX12 핵심 객체들
     static ComPtr<ID3D12Device> mDevice;        // 하드웨어 장치 인터페이스
     static const UINT FRAME_BUFFER_COUNT = 2;  // 더블 버퍼링용 버퍼 개수

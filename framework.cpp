@@ -6,8 +6,10 @@
 
 #define DEBUG
 
-// DirectX 12 장치(Device)는 어플리케이션 전체에서 공유되므로 정적 멤버로 관리합니다.
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
+HWND Framework::sHwnd   = nullptr;
+int  Framework::sWidth  = 0;
+int  Framework::sHeight = 0;
 
 Framework::Framework(int width, int height)
 	: mWindowWidth(width), mWindowHeight(height)
@@ -20,7 +22,10 @@ Framework::~Framework() {
 
 void Framework::Initialize(HWND hwnd)
 {
-	mHwnd = hwnd;
+	mHwnd  = hwnd;
+	sHwnd  = hwnd;
+	sWidth  = mWindowWidth;
+	sHeight = mWindowHeight;
 
 	// [1] 디버그 레이어 활성화: 개발 중 발생하는 DX12 관련 오류를 콘솔에 출력해줍니다.
 #if defined(DEBUG) || defined(_DEBUG)
@@ -334,8 +339,10 @@ void Framework::OnResize(int width, int height)
 {
 	if (mSwapChain == nullptr) return;
 
-	mWindowWidth = width;
+	mWindowWidth  = width;
 	mWindowHeight = height;
+	sWidth  = width;
+	sHeight = height;
 
 	// [1] GPU 작업 완료 대기
 	WaitForGPU();

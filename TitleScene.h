@@ -1,6 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "GameObject.h"
+#include "Start.h"
 
 class TitleScene : public Scene
 {
@@ -15,5 +16,5 @@ public:
 
 private:
 	std::vector<GameObject*> mGameObjects;
-
+	Start* mStart = nullptr;
 };

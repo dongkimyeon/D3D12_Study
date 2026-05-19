@@ -28,7 +28,8 @@
 
 
 #include "OBJLoader.h"
-#include <DirectXMath.h>  // 행렬 연산용
+#include <DirectXMath.h>        // 행렬 연산용
+#include <DirectXCollision.h>   // BoundingBox, Ray-AABB 교차 판정용
 
 
 #include "imgui.h"
