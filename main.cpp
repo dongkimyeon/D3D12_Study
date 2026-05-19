@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "Framework.h"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#define WINDOW_WIDTH 1280   
-#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH 1920	   
+#define WINDOW_HEIGHT 1080
 extern bool debugMode = true;
 Framework* gFramework = nullptr;
 

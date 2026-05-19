@@ -2,6 +2,7 @@
 #include "Cube.h"
 #include "framework.h"
 #include "Camera.h"
+#include "Player.h"
 
 Map1Scene::Map1Scene() {}
 Map1Scene::~Map1Scene() {}
@@ -85,6 +86,19 @@ void Map1Scene::Initialize()
 			mWallCubes.push_back(cube);
 		}
 	}
+
+	mPlayer = new Player();
+	mPlayer->Initialize(Framework::GetDevice());
+	mPlayer->SetPosition(0.0f, 5.0f, -0.0f);
+	mPlayer->SetScale(0.005f, 0.005f, 0.005f);
+	mGameObjects.push_back(mPlayer);
+
+	mGun = new Gun();
+	mGun->Initialize(Framework::GetDevice());
+	mGun->SetPosition(2.0f, 5.0f, -0.0f);
+	mGun->SetScale(0.0015f, 0.0015f, 0.0015f);
+	mGameObjects.push_back(mGun);
+
 }
 
 void Map1Scene::Update(float dt)

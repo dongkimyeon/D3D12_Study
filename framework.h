@@ -8,7 +8,7 @@
 class Framework
 {
 public:
-    Framework(int width = 1280, int height = 720);
+    Framework(int width = 1920, int height = 1080);
     virtual ~Framework();
 
     void Initialize(HWND hwnd); // 엔진 및 DX12 초기화

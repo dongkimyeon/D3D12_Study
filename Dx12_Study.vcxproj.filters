@@ -58,6 +58,9 @@
     <Filter Include="GameObject\TitleSceneObject">
       <UniqueIdentifier>{e1bdd5e9-03aa-4bf9-865f-f02dafc968d3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject\InGameObj">
+      <UniqueIdentifier>{121735b4-cd6d-4ea5-a9f9-a4458768ce18}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -152,6 +155,18 @@
     </ClCompile>
     <ClCompile Include="Map1Scene.cpp">
       <Filter>Scene\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClCompile>
+    <ClCompile Include="Gun.cpp">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClCompile>
+    <ClCompile Include="Bullet.cpp">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClCompile>
+    <ClCompile Include="Enemy.cpp">
+      <Filter>GameObject\InGameObj</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -259,6 +274,18 @@
     </ClInclude>
     <ClInclude Include="Map1Scene.h">
       <Filter>Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClInclude>
+    <ClInclude Include="Gun.h">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClInclude>
+    <ClInclude Include="Bullet.h">
+      <Filter>GameObject\InGameObj</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h">
+      <Filter>GameObject\InGameObj</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
