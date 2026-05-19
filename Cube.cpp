@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Cube.h"
 
-// ---- Static member definitions ----
 ComPtr<ID3D12Resource> Cube::sVB;
 ComPtr<ID3D12Resource> Cube::sIB;
 ComPtr<ID3D12Resource> Cube::sVBUpload;
@@ -15,18 +14,12 @@ D3D12_RESOURCE_STATES Cube::sIBState  = D3D12_RESOURCE_STATE_COPY_DEST;
 bool    Cube::sVBDirty = false;
 bool    Cube::sIBDirty = false;
 
-// ---------------------------------------------------------------------------
-// LoadSharedMesh: called once on the first Cube::Initialize
-//   - Loads cube.obj into one GPU VB + IB shared by all instances
-//   - Vertex colors are set to white so per-cube tint works cleanly
-// ---------------------------------------------------------------------------
 void Cube::LoadSharedMesh(ComPtr<ID3D12Device> device)
 {
     std::vector<OBJVertex> verts;
     std::vector<uint16_t>  inds;
     OBJLoader::Load("cube.obj", verts, inds);
 
-    // Neutral white vertex color: per-cube tint is passed via root constants
     for (auto& v : verts) { v.r = v.g = v.b = v.a = 1.0f; }
 
     D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
@@ -86,7 +79,6 @@ void Cube::UnloadSharedMesh()
     sVBDirty = sIBDirty = false;
 }
 
-// ---------------------------------------------------------------------------
 
 Cube::Cube()
 {
@@ -100,12 +92,10 @@ Cube::~Cube()
 
 void Cube::Initialize(ComPtr<ID3D12Device> device)
 {
-    // Load shared mesh on first instance; subsequent instances skip the load
     if (sRefCount == 0)
         LoadSharedMesh(device);
     ++sRefCount;
 
-    // Randomize a flat color for this cube instance
     std::mt19937 gen(std::random_device{}());
     std::uniform_real_distribution<float> dis(0.3f, 1.0f);
     mColor = { dis(gen), dis(gen), dis(gen), 1.0f };

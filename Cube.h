@@ -10,8 +10,8 @@ public:
     virtual void Initialize(ComPtr<ID3D12Device> device) override;
     virtual void Update(float dt) override;
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
-
-    // AABB auto-updated every frame from position + scale
+	
+	void SetColor(XMFLOAT4 color) { mColor = color; }
     const DirectX::BoundingBox& GetAABB() const { return mAABB; }
 
 private:
