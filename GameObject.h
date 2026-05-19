@@ -27,7 +27,7 @@ public:
 	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
 	void SetPosition(XMFLOAT3 pos) { position = pos; }
 
-	void SetRotation(float pitch, float yaw, float roll) { rotation = { pitch, yaw, roll }; }
+	void SetRotation(float pitch, float yaw, float roll) { rotation = { XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll) }; }
 	void SetRotation(XMFLOAT3 rot) { rotation = rot; }
 
 	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }

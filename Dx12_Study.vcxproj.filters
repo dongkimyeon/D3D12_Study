@@ -55,6 +55,9 @@
     <Filter Include="GameObject\Helicopter">
       <UniqueIdentifier>{cbc1ddd3-b7a4-4dc2-90a1-17c4a6d4e434}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject\TitleSceneObject">
+      <UniqueIdentifier>{e1bdd5e9-03aa-4bf9-865f-f02dafc968d3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -128,6 +131,24 @@
     </ClCompile>
     <ClCompile Include="HeliTale.cpp">
       <Filter>GameObject\Helicopter</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleScene.cpp">
+      <Filter>Scene\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="MapSelectScene.cpp">
+      <Filter>Scene\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="Map1.cpp">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Map2.cpp">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Start.cpp">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Title.cpp">
+      <Filter>GameObject\TitleSceneObject</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +235,24 @@
     </ClInclude>
     <ClInclude Include="HeliTale.h">
       <Filter>GameObject\Helicopter</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleScene.h">
+      <Filter>Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="MapSelectScene.h">
+      <Filter>Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="Map1.h">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Map2.h">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Start.h">
+      <Filter>GameObject\TitleSceneObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Title.h">
+      <Filter>GameObject\TitleSceneObject</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

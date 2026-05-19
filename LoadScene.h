@@ -1,11 +1,14 @@
 #pragma once
 #include "SceneManager.h"
 #include "TestScene.h"
+#include "TitleScene.h"
 
 
 void LoadScenes()
 {
-    // ¾ÀÀ» »ı¼ºÇÏ°í ¹Ù·Î È°¼ºÈ­
+    // ì”¬ì„ ìƒì„±í•˜ê³  ë°”ë¡œ í™œì„±í™”
+	SceneManager::CreateScene<TitleScene>(L"TitleScene");
     SceneManager::CreateScene<TestScene>(L"TestScene");
-    SceneManager::LoadScene(L"TestScene");
+	
+    SceneManager::LoadScene(L"TitleScene");
 }

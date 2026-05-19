@@ -41,25 +41,7 @@ void TestScene::Initialize()
 
 	}
 	
-	//int gridSize = 15;       // 3x3x3 형태로 총 27개의 큐브 생성
-	//float spacing = 5.0f;   // 큐브 사이의 간격
 
-	//for (int x = 0; x < gridSize; ++x) {
-	//	for (int y = 0; y < gridSize; ++y) {
-	//		for (int z = 0; z < gridSize; ++z) {
-	//			GameObject* cube = new Cube();
-	//			cube->Initialize(Framework::GetDevice());
-	//			cube->SetPosition(x * spacing, y * spacing, z * spacing);
-	//			mGameObjects.push_back(cube);
-	//		}
-	//	}
-	//}
-
-	GameObject* testCube = new Cube();
-	testCube->Initialize(Framework::GetDevice());
-	testCube->SetPosition(0, 7.5f, 0);
-	testCube->SetAlpha(0.5f); // 반투명 설정
-	mGameObjects.push_back(testCube);
 
 
 
