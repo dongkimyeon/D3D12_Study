@@ -1,8 +1,10 @@
 #include "Map1Scene.h"
 #include "Cube.h"
 #include "framework.h"
+#include <random>
 #include "Camera.h"
 #include "Player.h"
+
 
 Map1Scene::Map1Scene() {}
 Map1Scene::~Map1Scene() {}
@@ -60,6 +62,9 @@ void Map1Scene::Initialize()
 	sMaze[0][1] = 1;
 	sMaze[GRID_SIZE - 1][GRID_SIZE - 2] = 1;
 
+	std::default_random_engine dre(std::random_device{}());
+	std::uniform_int_distribution<int> uid(1, 10);
+
 	for (int row = 0; row < GRID_SIZE; ++row)
 	{
 		for (int col = 0; col < GRID_SIZE; ++col)
@@ -81,7 +86,7 @@ void Map1Scene::Initialize()
 			else
 			{
 				cube->SetPosition(x, -1.5f, z);
-				cube->SetScale(1.0f, 0.1f, 1.0f);
+				cube->SetScale(1.0f, 0.1f * uid(dre), 1.0f);
 				cube->SetColor({ 0.8f, 0.8f, 0.8f, 1.0f });
 			}
 
