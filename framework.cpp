@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "Framework.h"
 #include "SceneManager.h"
-#include "TestScene.h"
+#include "Map1Scene.h"
+#include "Map2Scene.h"
 #include "LoadScene.h"
 
 #define DEBUG

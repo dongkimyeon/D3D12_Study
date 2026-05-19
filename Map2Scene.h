@@ -6,11 +6,11 @@ class HeliBody;
 class HeliTale;
 class HeliBlade;
 
-class TestScene : public Scene
+class Map2Scene : public Scene
 {
 public:
-    TestScene();
-    virtual ~TestScene();
+    Map2Scene();
+    virtual ~Map2Scene();
 
     virtual void Initialize() override;
     virtual void Update(float dt) override;

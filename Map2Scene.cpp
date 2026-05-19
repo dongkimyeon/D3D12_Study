@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "TestScene.h"
+#include "Map2Scene.h"
 #include "Cube.h"
 #include "Plane.h"
 #include "Gizumo.h"
@@ -12,16 +12,16 @@
 
 extern bool debugMode;
 
-TestScene::TestScene()
+Map2Scene::Map2Scene	()
 {
 
 }
 
-TestScene::~TestScene()
+Map2Scene::~Map2Scene()
 {
 }
 
-void TestScene::Initialize()
+void Map2Scene::Initialize()
 {
 	// ============================================
 	GameObject* gizumo = new Gizumo();
@@ -78,7 +78,7 @@ void TestScene::Initialize()
 
 }
 
-void TestScene::Update(float dt)
+void Map2Scene::Update(float dt)
 {
 	
 	// 1. 자체 회전각 누적 (static 또는 멤버 변수)
@@ -244,7 +244,7 @@ void TestScene::Update(float dt)
 
 }
 
-void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 
     XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(0, 1, 0, 0));
@@ -401,7 +401,7 @@ void TestScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     ImGui::End();
 }
 
-void TestScene::Release()
+void Map2Scene::Release()
 {
 	mGameObjects.clear();
 }

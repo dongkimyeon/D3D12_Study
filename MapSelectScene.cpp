@@ -77,11 +77,11 @@ void MapSelectScene::Update(float dt)
 		DirectX::BoundingBox Map2_aabb = mMap2->GetWorldAABB();
 		if (Map1_aabb.Intersects(rayOrigin, rayDir, dist))
 		{
-			SceneManager::LoadScene(L"TestScene");
+			SceneManager::LoadScene(L"Map1Scene");
 		}
 		if(Map2_aabb.Intersects(rayOrigin, rayDir, dist))
 		{
-			SceneManager::LoadScene(L"TitleScene");
+			SceneManager::LoadScene(L"Map2Scene");
 		}
 	}
 

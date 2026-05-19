@@ -158,6 +158,7 @@
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Map1.cpp" />
+    <ClCompile Include="Map1Scene.cpp" />
     <ClCompile Include="Map2.cpp" />
     <ClCompile Include="MapSelectScene.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
@@ -165,7 +166,7 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Start.cpp" />
-    <ClCompile Include="TestScene.cpp" />
+    <ClCompile Include="Map2Scene.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="Title.cpp" />
     <ClCompile Include="TitleScene.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="LoadScene.h" />
     <ClInclude Include="Map1.h" />
+    <ClInclude Include="Map1Scene.h" />
     <ClInclude Include="Map2.h" />
     <ClInclude Include="MapSelectScene.h" />
     <ClInclude Include="OBJLoader.h" />
@@ -208,7 +210,7 @@
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Start.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="TestScene.h" />
+    <ClInclude Include="Map2Scene.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="Title.h" />
     <ClInclude Include="TitleScene.h" />

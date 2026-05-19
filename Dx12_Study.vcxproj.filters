@@ -96,7 +96,7 @@
     <ClCompile Include="GameObject.cpp">
       <Filter>GameObject</Filter>
     </ClCompile>
-    <ClCompile Include="TestScene.cpp">
+    <ClCompile Include="Map2Scene.cpp">
       <Filter>Scene\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="Entity.cpp">
@@ -150,6 +150,9 @@
     <ClCompile Include="Title.cpp">
       <Filter>GameObject\TitleSceneObject</Filter>
     </ClCompile>
+    <ClCompile Include="Map1Scene.cpp">
+      <Filter>Scene\Scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Input.h">
@@ -194,7 +197,7 @@
     <ClInclude Include="GameObject.h">
       <Filter>GameObject</Filter>
     </ClInclude>
-    <ClInclude Include="TestScene.h">
+    <ClInclude Include="Map2Scene.h">
       <Filter>Scene\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="Entity.h">
@@ -253,6 +256,9 @@
     </ClInclude>
     <ClInclude Include="Title.h">
       <Filter>GameObject\TitleSceneObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Map1Scene.h">
+      <Filter>Scene\Scenes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
