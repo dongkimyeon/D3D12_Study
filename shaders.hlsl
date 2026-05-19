@@ -32,11 +32,21 @@ PSInput vs_main(VSInput input)
 
 float4 ps_main(PSInput input) : SV_TARGET
 {
-    float3 lightDir = normalize(float3(1, 1, -1));
-    float ndotl = max(dot(input.normal, lightDir), 0.3f);
-    
-    // 이전에 곱하던 전역 color(현재 항상 0)를 지우고
-    // Vertex Shader가 넘겨준 정점 고유의 색상(input.color)값에 명암만 적용합니다.
-    // 반투명을 위해 투명도(a) 값은 input.color.a 를 사용합니다.
-    return float4(input.color.rgb * ndotl, input.color.a);
+    float3 N = normalize(input.normal);
+
+    // 두 방향광: L1은 우상단, L2는 전방+살짝 위 — 4개 벽면 방향이 모두 다른 밝기를 가짐
+    float3 L1 = normalize(float3(1.0, 0.8,  0.0));
+    float3 L2 = normalize(float3(0.0, 0.3,  1.0));
+    float lighting = 0.10
+        + max(dot(N, L1), 0.0) * 0.65
+        + max(dot(N, L2), 0.0) * 0.45;
+
+    float3 litColor = input.color.rgb * saturate(lighting);
+
+    // 지수 안개 — 가까운 벽은 밝고 먼 벽은 어두워져 원근감 강화
+    float viewDist  = 1.0 / input.position.w;
+    float3 fogColor = float3(0.01, 0.01, 0.02);
+    float3 finalColor = lerp(fogColor, litColor, saturate(exp(-viewDist * 0.06)));
+
+    return float4(finalColor, input.color.a);
 }

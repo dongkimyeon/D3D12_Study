@@ -12,6 +12,7 @@ D3D12_RESOURCE_STATES Cube::sVBState  = D3D12_RESOURCE_STATE_COPY_DEST;
 D3D12_RESOURCE_STATES Cube::sIBState  = D3D12_RESOURCE_STATE_COPY_DEST;
 bool    Cube::sVBDirty = false;
 bool    Cube::sIBDirty = false;
+DirectX::BoundingBox Cube::sLocalAABB;
 
 void Cube::LoadSharedMesh(ComPtr<ID3D12Device> device)
 {
@@ -20,6 +21,18 @@ void Cube::LoadSharedMesh(ComPtr<ID3D12Device> device)
     OBJLoader::Load("cube.obj", verts, inds);
 
     for (auto& v : verts) { v.r = v.g = v.b = v.a = 1.0f; }
+
+    // 실제 버텍스 범위로 로컬 AABB 계산 (scale * 0.5 가정 제거)
+    XMFLOAT3 vmin = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
+    XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    for (const auto& v : verts) {
+        vmin.x = std::min(vmin.x, v.x); vmax.x = std::max(vmax.x, v.x);
+        vmin.y = std::min(vmin.y, v.y); vmax.y = std::max(vmax.y, v.y);
+        vmin.z = std::min(vmin.z, v.z); vmax.z = std::max(vmax.z, v.z);
+    }
+    sLocalAABB = DirectX::BoundingBox(
+        { (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f },
+        { (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f });
 
     D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
     D3D12_HEAP_PROPERTIES def    = { D3D12_HEAP_TYPE_DEFAULT };
@@ -102,8 +115,8 @@ void Cube::Update(float dt)
 
 void Cube::UpdateAABB()
 {
-    mAABB.Center  = position;
-    mAABB.Extents = { scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f };
+    // worldMatrix는 GameObject::Update()에서 이미 갱신됨
+    sLocalAABB.Transform(mAABB, XMLoadFloat4x4(&worldMatrix));
 }
 
 void Cube::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)

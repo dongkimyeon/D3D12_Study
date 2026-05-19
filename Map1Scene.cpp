@@ -98,10 +98,18 @@ void Map1Scene::Initialize()
 		}
 	}
 
+	// Update(0) 호출로 worldMatrix + mAABB 갱신 후 캐시 빌드
+	mCubeAABBs.reserve(mWallCubes.size());
+	for (auto* cube : mWallCubes) {
+		cube->Update(0.0f);                          // worldMatrix, mAABB 초기화
+		mCubeAABBs.push_back(cube->GetWorldAABB()); // 갱신된 AABB 사용
+	}
+
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	// 입구: row=0,col=1 → 월드(-48, z=-50). 바로 안쪽 z=-48에 배치
 	mPlayer->SetPosition(-48.0f, 0.0f, -48.0f);
+	mPlayer->SetColliders(&mCubeAABBs);
 	mGameObjects.push_back(mPlayer);
 
 	mGun = new Gun();
@@ -116,18 +124,34 @@ void Map1Scene::Initialize()
 	mEnemies.push_back(enemy);
 	mGameObjects.push_back(enemy);
 
-	Bullet* bullet = new Bullet();
-	bullet->Initialize(Framework::GetDevice());
-	bullet->SetPosition(0.0f, 5.0f, 2.0f);
-	
-	mGameObjects.push_back(bullet);
-
+	for (int i = 0; i < kBulletPoolSize; ++i) {
+		Bullet* b = new Bullet();
+		b->Initialize(Framework::GetDevice());
+		b->SetColliders(&mCubeAABBs);
+		mBullets.push_back(b);
+	}
 }
 
 void Map1Scene::Update(float dt)
 {
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
+
+	if (!debugMode && Input::GetKeyDown(eKeyCode::LButton))
+		FireBullet();
+
+	for (auto* b : mBullets)
+		b->Update(dt);
+}
+
+void Map1Scene::FireBullet()
+{
+	for (auto* b : mBullets) {
+		if (!b->IsActive()) {
+			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetForwardDir());
+			break;
+		}
+	}
 }
 
 void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -137,10 +161,13 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0),
 		XMVectorSet(0, 1, 0, 0)
 	);
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 1000.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
 
 	for (const auto& obj : mGameObjects)
 		obj->Render(commandList, view, proj);
+
+	for (auto* b : mBullets)
+		b->Render(commandList, view, proj);
 
 	ImGui::Begin("Map1");
 	ImGui::Text("Camera: (%.2f, %.2f, %.2f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
@@ -158,6 +185,9 @@ void Map1Scene::Release()
 	mGameObjects.clear();
 	mWallCubes.clear();
 	mEnemies.clear();
+	mCubeAABBs.clear();
+	for (auto* b : mBullets) delete b;
+	mBullets.clear();
 	Cube::UnloadSharedMesh();
 	Enemy::UnloadSharedMesh();
 }

@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Gun.h"
 #include "Enemy.h"
+#include "Bullet.h"
 
 class Map1Scene : public Scene
 {
@@ -19,8 +20,15 @@ public:
 
 private:
 	std::vector<GameObject*> mGameObjects;
-	std::vector<Cube*>       mWallCubes;   // 충돌 검사용 벽 큐브 목록
-	std::vector<Enemy*>      mEnemies;     // 적 목록
+	std::vector<Cube*>       mWallCubes;
+	std::vector<Enemy*>      mEnemies;
 	Player* mPlayer;
-	Gun* mGun;
+	Gun*    mGun;
+
+	// 큐브 AABB 캐시 (큐브는 이동하지 않으므로 초기화 시 1회 생성)
+	std::vector<DirectX::BoundingBox> mCubeAABBs;
+
+	std::vector<Bullet*> mBullets;
+	static constexpr int kBulletPoolSize = 10;
+	void FireBullet();
 };

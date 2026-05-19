@@ -40,43 +40,117 @@ void Player::Initialize(ComPtr<ID3D12Device> device)
 void Player::Update(float dt)
 {
 	if (!debugMode) {
-		// 마우스 룩: 창 중앙 기준 delta 계산 후 재센터링
+		// --- 마우스 룩 ---
 		HWND hwnd = Framework::GetHwnd();
 		RECT rc;
 		GetClientRect(hwnd, &rc);
 		POINT center = { rc.right / 2, rc.bottom / 2 };
 		ClientToScreen(hwnd, &center);
-
-		POINT cur;
-		GetCursorPos(&cur);
-		if (!mFirstMouse) {
-			mYaw += (cur.x - center.x) * 0.002f;
-		}
+		POINT cur; GetCursorPos(&cur);
+		if (!mFirstMouse) mYaw += (cur.x - center.x) * 0.002f;
 		mFirstMouse = false;
 		SetCursorPos(center.x, center.y);
 
-		// WASD 이동 (XZ 평면)
+		// --- WASD 수평 속도 ---
 		float speed = mMoveSpeed;
 		if (Input::GetKey(eKeyCode::SHIFT)) speed *= 2.0f;
 
 		XMMATRIX rotM = XMMatrixRotationY(mYaw);
-		XMVECTOR fwd  = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
-		XMVECTOR rgt  = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM);
-		XMVECTOR pos  = XMLoadFloat3(&position);
+		XMFLOAT3 fwdF, rgtF;
+		XMStoreFloat3(&fwdF, XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM));
+		XMStoreFloat3(&rgtF, XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM));
 
-		if (Input::GetKey(eKeyCode::W)) pos = pos + fwd * (speed * dt);
-		if (Input::GetKey(eKeyCode::S)) pos = pos - fwd * (speed * dt);
-		if (Input::GetKey(eKeyCode::D)) pos = pos + rgt * (speed * dt);
-		if (Input::GetKey(eKeyCode::A)) pos = pos - rgt * (speed * dt);
-		XMStoreFloat3(&position, pos);
+		float velX = 0.0f, velZ = 0.0f;
+		if (Input::GetKey(eKeyCode::W)) { velX += fwdF.x * speed; velZ += fwdF.z * speed; }
+		if (Input::GetKey(eKeyCode::S)) { velX -= fwdF.x * speed; velZ -= fwdF.z * speed; }
+		if (Input::GetKey(eKeyCode::D)) { velX += rgtF.x * speed; velZ += rgtF.z * speed; }
+		if (Input::GetKey(eKeyCode::A)) { velX -= rgtF.x * speed; velZ -= rgtF.z * speed; }
+
+		// --- 점프 ---
+		if (mOnGround && Input::GetKeyDown(eKeyCode::SPACE)) {
+			mVelocityY = kJumpSpeed;
+			mOnGround  = false;
+		}
+
+		// --- 중력 ---
+		mVelocityY += kGravity * dt;
+		if (mVelocityY < -30.0f) mVelocityY = -30.0f;
+
+		// --- 수평 이동 + 벽 충돌 ---
+		position.x += velX * dt;
+		position.z += velZ * dt;
+		if (mColliders) ResolveHorizontal(*mColliders);
+
+		// --- 수직 이동 + 바닥/천장 충돌 ---
+		position.y += mVelocityY * dt;
+		mOnGround = false;
+		if (mColliders) ResolveVertical(*mColliders);
+
 		rotation.y = mYaw;
-
 		Camera::SetFollowTarget(position, mYaw);
 	} else {
-		mFirstMouse = true; // 플레이어 모드 재진입 시 마우스 점프 방지
+		mFirstMouse = true;
 	}
 
 	GameObject::Update(dt);
+}
+
+DirectX::BoundingBox Player::ComputePhysicsAABB() const
+{
+	// BakeScale 적용 후 scale={1,1,1} → worldMatrix = RotY(mYaw) * Trans(position)
+	XMMATRIX world = XMMatrixRotationY(mYaw)
+	               * XMMatrixTranslation(position.x, position.y, position.z);
+	DirectX::BoundingBox out;
+	mLocalAABB.Transform(out, world);
+	return out;
+}
+
+void Player::ResolveHorizontal(const std::vector<DirectX::BoundingBox>& cubes)
+{
+	DirectX::BoundingBox p = ComputePhysicsAABB();
+
+	for (const auto& c : cubes) {
+		float dx = (p.Extents.x + c.Extents.x) - fabsf(p.Center.x - c.Center.x);
+		float dy = (p.Extents.y + c.Extents.y) - fabsf(p.Center.y - c.Center.y);
+		float dz = (p.Extents.z + c.Extents.z) - fabsf(p.Center.z - c.Center.z);
+
+		if (dx <= 0.0f || dy <= 0.0f || dz <= 0.0f) continue;
+		if (dy <= std::min(dx, dz)) continue; // 수직 접촉 → 수평 패스 스킵
+
+		if (dx < dz) {
+			float push = (p.Center.x > c.Center.x) ? dx : -dx;
+			position.x   += push;
+			p.Center.x   += push;
+		} else {
+			float push = (p.Center.z > c.Center.z) ? dz : -dz;
+			position.z   += push;
+			p.Center.z   += push;
+		}
+	}
+}
+
+void Player::ResolveVertical(const std::vector<DirectX::BoundingBox>& cubes)
+{
+	DirectX::BoundingBox p = ComputePhysicsAABB();
+
+	for (const auto& c : cubes) {
+		float dx = (p.Extents.x + c.Extents.x) - fabsf(p.Center.x - c.Center.x);
+		float dy = (p.Extents.y + c.Extents.y) - fabsf(p.Center.y - c.Center.y);
+		float dz = (p.Extents.z + c.Extents.z) - fabsf(p.Center.z - c.Center.z);
+
+		if (dx <= 0.0f || dy <= 0.0f || dz <= 0.0f) continue;
+		if (dy > std::min(dx, dz)) continue; // 수평 접촉 → 수직 패스 스킵
+
+		if (p.Center.y > c.Center.y) {   // 플레이어가 위 → 바닥 착지
+			position.y   += dy;
+			p.Center.y   += dy;
+			if (mVelocityY < 0.0f) { mVelocityY = 0.0f; mOnGround = true; }
+		} else {                          // 플레이어가 아래 → 천장 충돌
+			position.y   -= dy;
+			p.Center.y   -= dy;
+			if (mVelocityY > 0.0f) mVelocityY = 0.0f;
+		}
+	}
 }
 
 void Player::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)

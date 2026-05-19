@@ -35,4 +35,5 @@ private:
     static D3D12_RESOURCE_STATES    sIBState;
     static bool                     sVBDirty;
     static bool                     sIBDirty;
+    static DirectX::BoundingBox     sLocalAABB;
 };

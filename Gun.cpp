@@ -44,6 +44,18 @@ void Gun::Update(float dt)
 	GameObject::Update(dt);
 }
 
+XMFLOAT3 Gun::GetMuzzlePosition() const
+{
+	if (!mOwner) return position;
+	float    yaw     = mOwner->GetYaw();
+	XMMATRIX rotY    = XMMatrixRotationY(yaw);
+	XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotY);
+	XMVECTOR muzzle  = XMLoadFloat3(&position) + forward * 0.5f;
+	XMFLOAT3 result;
+	XMStoreFloat3(&result, muzzle);
+	return result;
+}
+
 void Gun::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
 	GameObject::Render(commandList, view, proj);

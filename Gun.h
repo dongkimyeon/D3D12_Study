@@ -13,7 +13,8 @@ public:
 	virtual void Update(float dt) override;
 	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
 
-	void AttachTo(Player* player) { mOwner = player; }
+	void     AttachTo(Player* player) { mOwner = player; }
+	XMFLOAT3 GetMuzzlePosition() const;
 
 private:
 	Player* mOwner = nullptr;
