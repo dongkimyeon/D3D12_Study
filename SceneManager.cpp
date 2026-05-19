@@ -3,6 +3,9 @@
 #include "Time.h"
 #include "Input.h"
 #include "GameObject.h"
+#include "Camera.h"
+
+extern bool debugMode;
 
 std::map<std::wstring, Scene*> SceneManager::mScenes;
 Scene* SceneManager::mActiveScene = nullptr;
@@ -40,6 +43,17 @@ void SceneManager::Update()
 		
 		if (Input::GetKeyDown(eKeyCode::F1))
 			GameObject::sShowAABB = !GameObject::sShowAABB;
+
+		if (Input::GetKeyDown(eKeyCode::F6)) {
+			debugMode = !debugMode;
+			ShowCursor(debugMode ? TRUE : FALSE);
+		}
+
+		if (!debugMode && Input::GetKeyDown(eKeyCode::F5)) {
+			Camera::sMode = (Camera::sMode == eCameraMode::FirstPerson)
+				? eCameraMode::ThirdPerson
+				: eCameraMode::FirstPerson;
+		}
 
 		if (Input::GetKeyDown(eKeyCode::ESC))
 		{

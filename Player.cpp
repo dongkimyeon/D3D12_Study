@@ -1,4 +1,8 @@
 #include "Player.h"
+#include "Camera.h"
+#include "framework.h"
+
+extern bool debugMode;
 
 Player::Player()
 {
@@ -12,7 +16,8 @@ void Player::Initialize(ComPtr<ID3D12Device> device)
 {
 	GameObject::Initialize(device);
 	LoadFromOBJ("Pacman.obj", device);
-	BakeScale(0.005f, 0.005f, 0.005f);
+	BakeScale(0.0025f, 0.0025f, 0.0025f);
+	BakeRotation(0, 180, 0);
 	for (auto& v : vertices) {
 		v.r = 1.0f; v.g = 1.0f; v.b = 0.0f; v.a = 1.0f;
 	}
@@ -34,6 +39,42 @@ void Player::Initialize(ComPtr<ID3D12Device> device)
 
 void Player::Update(float dt)
 {
+	if (!debugMode) {
+		// 마우스 룩: 창 중앙 기준 delta 계산 후 재센터링
+		HWND hwnd = Framework::GetHwnd();
+		RECT rc;
+		GetClientRect(hwnd, &rc);
+		POINT center = { rc.right / 2, rc.bottom / 2 };
+		ClientToScreen(hwnd, &center);
+
+		POINT cur;
+		GetCursorPos(&cur);
+		if (!mFirstMouse) {
+			mYaw += (cur.x - center.x) * 0.002f;
+		}
+		mFirstMouse = false;
+		SetCursorPos(center.x, center.y);
+
+		// WASD 이동 (XZ 평면)
+		float speed = mMoveSpeed;
+		if (Input::GetKey(eKeyCode::SHIFT)) speed *= 2.0f;
+
+		XMMATRIX rotM = XMMatrixRotationY(mYaw);
+		XMVECTOR fwd  = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
+		XMVECTOR rgt  = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM);
+		XMVECTOR pos  = XMLoadFloat3(&position);
+
+		if (Input::GetKey(eKeyCode::W)) pos = pos + fwd * (speed * dt);
+		if (Input::GetKey(eKeyCode::S)) pos = pos - fwd * (speed * dt);
+		if (Input::GetKey(eKeyCode::D)) pos = pos + rgt * (speed * dt);
+		if (Input::GetKey(eKeyCode::A)) pos = pos - rgt * (speed * dt);
+		XMStoreFloat3(&position, pos);
+		rotation.y = mYaw;
+
+		Camera::SetFollowTarget(position, mYaw);
+	} else {
+		mFirstMouse = true; // 플레이어 모드 재진입 시 마우스 점프 방지
+	}
 
 	GameObject::Update(dt);
 }

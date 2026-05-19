@@ -17,4 +17,8 @@ public:
 
 private:
 	DirectX::BoundingBox mLocalAABB;
+
+	float mYaw       = 0.0f;
+	float mMoveSpeed = 5.0f;
+	bool  mFirstMouse = true;
 };

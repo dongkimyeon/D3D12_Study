@@ -6,6 +6,8 @@
 #include "Player.h"
 #include "Bullet.h"
 
+extern bool debugMode;
+
 
 Map1Scene::Map1Scene() {}
 Map1Scene::~Map1Scene() {}
@@ -98,7 +100,8 @@ void Map1Scene::Initialize()
 
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
-	mPlayer->SetPosition(0.0f, 5.0f, -0.0f);
+	// 입구: row=0,col=1 → 월드(-48, z=-50). 바로 안쪽 z=-48에 배치
+	mPlayer->SetPosition(-48.0f, 0.0f, -48.0f);
 	mGameObjects.push_back(mPlayer);
 
 	mGun = new Gun();
@@ -142,6 +145,9 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::Begin("Map1");
 	ImGui::Text("Camera: (%.2f, %.2f, %.2f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 	ImGui::Text("Total: %d cubes", (int)mGameObjects.size());
+	ImGui::Text("Mode: %s | F6=Debug F5=1st/3rd",
+		debugMode ? "Debug" :
+		(Camera::sMode == eCameraMode::FirstPerson ? "1st Person" : "3rd Person"));
 	ImGui::End();
 }
 

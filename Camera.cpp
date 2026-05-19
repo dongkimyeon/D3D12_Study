@@ -12,8 +12,33 @@ float Camera::camYaw = 0.0f;
 float Camera::camPitch = 0.5f;
 POINT Camera::prevMousePos = { 0, 0 };
 bool Camera::isRotating = false;
+eCameraMode Camera::sMode = eCameraMode::FirstPerson;
 
 extern bool debugMode;
+
+void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerYaw)
+{
+	XMMATRIX rotM = XMMatrixRotationY(playerYaw);
+	XMVECTOR fwd = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
+	XMVECTOR rgt = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM);
+	XMStoreFloat3(&camForward, fwd);
+	XMStoreFloat3(&camRight, rgt);
+	camUp = { 0, 1, 0 };
+
+	if (sMode == eCameraMode::FirstPerson) {
+		camPos = { playerPos.x, playerPos.y, playerPos.z };
+	} else {
+		// 3인칭: 플레이어 뒤 6, 위 3
+		XMVECTOR target   = XMLoadFloat3(&playerPos);
+		XMVECTOR camPosV  = target - fwd * 3.0f + XMVectorSet(0, 1.5f, 0, 0);
+		XMStoreFloat3(&camPos, camPosV);
+		// 플레이어를 바라보는 방향으로 덮어씀
+		XMVECTOR lookDir = XMVector3Normalize(target - camPosV);
+		XMStoreFloat3(&camForward, lookDir);
+		XMVECTOR newRight = XMVector3Normalize(XMVector3Cross(XMVectorSet(0, 1, 0, 0), lookDir));
+		XMStoreFloat3(&camRight, newRight);
+	}
+}
 
 void Camera::Update(float dt)
 {
