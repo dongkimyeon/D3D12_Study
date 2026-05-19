@@ -39,10 +39,7 @@ void TitleScene::Update(float dt)
 		obj->Update(dt);
 	}
 
-	if(Input::GetKeyDown(eKeyCode::SPACE))
-	{
-		SceneManager::LoadScene(L"TestScene");
-	}
+
 
 	// 마우스 좌클릭으로 Start 객체 피킹
 	if (Input::GetKeyDown(eKeyCode::LButton) && mStart)
@@ -79,7 +76,7 @@ void TitleScene::Update(float dt)
 		DirectX::BoundingBox aabb = mStart->GetWorldAABB();
 		if (aabb.Intersects(rayOrigin, rayDir, dist))
 		{
-			SceneManager::LoadScene(L"TestScene");
+			SceneManager::LoadScene(L"MapSelectScene");
 		}
 	}
 }

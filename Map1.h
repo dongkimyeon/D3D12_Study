@@ -12,8 +12,9 @@ public:
 
 	// Render 함수 오버라이딩 추가
 	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
+	DirectX::BoundingBox GetWorldAABB() const;
 
 private:
-
+	DirectX::BoundingBox mLocalAABB;
 	std::array<float, 4> color;
 };

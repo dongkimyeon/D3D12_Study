@@ -1,7 +1,8 @@
 #pragma once
 #include "Scene.h"
 #include "GameObject.h"
-#include "Start.h"
+#include "Map1.h"
+#include "Map2.h"
 
 class MapSelectScene : public Scene
 {
@@ -16,5 +17,6 @@ public:
 
 private:
 	std::vector<GameObject*> mGameObjects;
-	Start* mStart = nullptr;
+	Map1* mMap1 = nullptr;
+	Map2* mMap2 = nullptr;
 };
