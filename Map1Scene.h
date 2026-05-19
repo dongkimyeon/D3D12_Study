@@ -4,6 +4,7 @@
 #include "Cube.h"
 #include "Player.h"
 #include "Gun.h"
+#include "Enemy.h"
 
 class Map1Scene : public Scene
 {
@@ -19,6 +20,7 @@ public:
 private:
 	std::vector<GameObject*> mGameObjects;
 	std::vector<Cube*>       mWallCubes;   // 충돌 검사용 벽 큐브 목록
+	std::vector<Enemy*>      mEnemies;     // 적 목록
 	Player* mPlayer;
 	Gun* mGun;
 };

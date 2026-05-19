@@ -8,7 +8,6 @@ ComPtr<ID3D12Resource> Cube::sIBUpload;
 D3D12_VERTEX_BUFFER_VIEW Cube::sVbView = {};
 D3D12_INDEX_BUFFER_VIEW  Cube::sIbView = {};
 UINT    Cube::sIndexCount = 0;
-int     Cube::sRefCount   = 0;
 D3D12_RESOURCE_STATES Cube::sVBState  = D3D12_RESOURCE_STATE_COPY_DEST;
 D3D12_RESOURCE_STATES Cube::sIBState  = D3D12_RESOURCE_STATE_COPY_DEST;
 bool    Cube::sVBDirty = false;
@@ -86,16 +85,10 @@ Cube::Cube()
 
 Cube::~Cube()
 {
-    if (--sRefCount == 0)
-        UnloadSharedMesh();
 }
 
 void Cube::Initialize(ComPtr<ID3D12Device> device)
 {
-    if (sRefCount == 0)
-        LoadSharedMesh(device);
-    ++sRefCount;
-
     std::mt19937 gen(std::random_device{}());
     std::uniform_real_distribution<float> dis(0.3f, 1.0f);
     mColor = { dis(gen), dis(gen), dis(gen), 1.0f };

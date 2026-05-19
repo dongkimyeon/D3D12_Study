@@ -12,6 +12,7 @@ void Player::Initialize(ComPtr<ID3D12Device> device)
 {
 	GameObject::Initialize(device);
 	LoadFromOBJ("Pacman.obj", device);
+	BakeScale(0.005f, 0.005f, 0.005f);
 	for (auto& v : vertices) {
 		v.r = 1.0f; v.g = 1.0f; v.b = 0.0f; v.a = 1.0f;
 	}

@@ -33,6 +33,8 @@ public:
 	void SetScale(float scaleX, float scaleY, float scaleZ) { scale = { scaleX, scaleY, scaleZ }; }
 	void SetScale(XMFLOAT3 s) { scale = s; }
 
+	void BakeScale(float sx, float sy, float sz);
+	void BakeRotation(float pitch, float yaw, float roll);
 	void BakeRotationX(float angleDeg);
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 	void SetAlpha(float alpha);

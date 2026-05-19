@@ -49,6 +49,9 @@ static void CarvePath(int r, int c)
 
 void Map1Scene::Initialize()
 {
+	Cube::LoadSharedMesh(Framework::GetDevice());
+	Enemy::LoadSharedMesh(Framework::GetDevice());
+
 	srand(0);
 	memset(sMaze, 0, sizeof(sMaze));
 	CarvePath(1, 1);
@@ -90,15 +93,19 @@ void Map1Scene::Initialize()
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	mPlayer->SetPosition(0.0f, 5.0f, -0.0f);
-	mPlayer->SetScale(0.005f, 0.005f, 0.005f);
 	mGameObjects.push_back(mPlayer);
 
 	mGun = new Gun();
 	mGun->Initialize(Framework::GetDevice());
 	mGun->SetPosition(2.0f, 5.0f, -0.0f);
-	mGun->SetScale(0.0015f, 0.0015f, 0.0015f);
 	mGameObjects.push_back(mGun);
 
+	Enemy* enemy = new Enemy();
+	enemy->Initialize(Framework::GetDevice());
+	enemy->SetPosition(5.0f, 5.0f, 0.0f);
+	enemy->SetScale(0.04f, 0.04f, 0.04f);
+	mEnemies.push_back(enemy);
+	mGameObjects.push_back(enemy);
 }
 
 void Map1Scene::Update(float dt)
@@ -131,4 +138,7 @@ void Map1Scene::Release()
 		delete obj;
 	mGameObjects.clear();
 	mWallCubes.clear();
+	mEnemies.clear();
+	Cube::UnloadSharedMesh();
+	Enemy::UnloadSharedMesh();
 }

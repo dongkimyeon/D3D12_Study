@@ -236,6 +236,29 @@ void GameObject::SetAlpha(float alpha)
 	UpdateVertexBuffer();
 }
 
+void GameObject::BakeScale(float sx, float sy, float sz)
+{
+	for (auto& v : vertices) {
+		v.x *= sx; v.y *= sy; v.z *= sz;
+	}
+	UpdateVertexBuffer();
+}
+
+void GameObject::BakeRotation(float pitch, float yaw, float roll)
+{
+	XMMATRIX rot = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(pitch),
+		XMConvertToRadians(yaw),
+		XMConvertToRadians(roll));
+	for (auto& v : vertices) {
+		XMVECTOR pos = XMVector3TransformCoord(XMVectorSet(v.x, v.y, v.z, 1.f), rot);
+		XMVECTOR nor = XMVector3TransformNormal(XMVectorSet(v.nx, v.ny, v.nz, 0.f), rot);
+		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&v.x),  pos);
+		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&v.nx), nor);
+	}
+	UpdateVertexBuffer();
+}
+
 void GameObject::BakeRotationX(float angleDeg)
 {
 	float rad = XMConvertToRadians(angleDeg);
