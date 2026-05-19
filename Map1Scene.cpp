@@ -106,7 +106,7 @@ void Map1Scene::Initialize()
 
 	mGun = new Gun();
 	mGun->Initialize(Framework::GetDevice());
-	mGun->SetPosition(2.0f, 5.0f, -0.0f);
+	mGun->AttachTo(mPlayer);
 	mGameObjects.push_back(mGun);
 
 	Enemy* enemy = new Enemy();

@@ -1,4 +1,5 @@
 #include "Gun.h"
+#include "Player.h"
 
 Gun::Gun()
 {
@@ -13,7 +14,7 @@ void Gun::Initialize(ComPtr<ID3D12Device> device)
 	GameObject::Initialize(device);
 	LoadFromOBJ("AK-74.obj", device);
 	BakeScale(0.0015f, 0.0015f, 0.0015f);
-	BakeRotation(0.0f, 90.0f, 0.0f);
+	BakeRotation(0.0f, 270.0f, 0.0f);
 	for (auto& v : vertices) {
 		v.r = 0.0f; v.g = 1.0f; v.b = 0.0f; v.a = 1.0f;
 	}
@@ -22,6 +23,23 @@ void Gun::Initialize(ComPtr<ID3D12Device> device)
 
 void Gun::Update(float dt)
 {
+	if (mOwner) {
+		float yaw           = mOwner->GetYaw();
+		XMFLOAT3 playerPos  = mOwner->GetPosition();
+
+		XMMATRIX rotY    = XMMatrixRotationY(yaw);
+		XMVECTOR right   = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotY);
+		XMVECTOR up      = XMVectorSet(0, 1, 0, 0);
+		XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotY);
+
+		XMVECTOR gunPos = XMLoadFloat3(&playerPos)
+			+ right   * kOffsetRight
+			+ up      * kOffsetUp
+			+ forward * kOffsetForward;
+
+		XMStoreFloat3(&position, gunPos);
+		rotation.y = yaw;
+	}
 
 	GameObject::Update(dt);
 }

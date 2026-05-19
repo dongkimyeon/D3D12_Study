@@ -21,4 +21,7 @@ private:
 	float mYaw       = 0.0f;
 	float mMoveSpeed = 5.0f;
 	bool  mFirstMouse = true;
+
+public:
+	float GetYaw() const { return mYaw; }
 };
