@@ -31,4 +31,11 @@ private:
 	std::vector<Bullet*> mBullets;
 	static constexpr int kBulletPoolSize = 10;
 	void FireBullet();
+
+	// Flow field (BFS from player, 각 셀 = 플레이어까지 거리)
+	static constexpr int   kMazeSize    = 51;
+	static constexpr float kMazeSpacing = 2.0f;
+	static constexpr float kMazeOffset  = (kMazeSize - 1) * kMazeSpacing * 0.5f;
+	int mFlowField[kMazeSize][kMazeSize];
+	void UpdateFlowField();
 };

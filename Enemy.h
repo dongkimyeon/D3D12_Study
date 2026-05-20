@@ -17,7 +17,29 @@ public:
 	static void LoadSharedMesh(ComPtr<ID3D12Device> device);
 	static void UnloadSharedMesh();
 
+	void SetTarget(const XMFLOAT3* pos)                              { mTarget    = pos; }
+	void SetColliders(const std::vector<DirectX::BoundingBox>* c)   { mColliders = c;   }
+	void SetEnemyList(const std::vector<Enemy*>* list)              { mEnemies   = list; }
+	void SetFlowField(const int* field, int gridSize, float spacing, float offset);
+
 private:
+	DirectX::BoundingBox ComputePhysicsAABB() const;
+	void ResolveWallCollision();
+	void SeparateFromEnemies();
+	XMFLOAT3 GetNextWaypoint() const;
+
+	const XMFLOAT3* mTarget    = nullptr;
+	const std::vector<DirectX::BoundingBox>* mColliders = nullptr;
+	const std::vector<Enemy*>*               mEnemies   = nullptr;
+
+	// Flow field 경로 추적
+	const int* mFlowField = nullptr;
+	int   mGridSize  = 0;
+	float mSpacing   = 0.0f;
+	float mOffset    = 0.0f;
+
+	float mMoveSpeed = 3.0f;
+
 	DirectX::BoundingBox mLocalAABB;
 
 	static ComPtr<ID3D12Resource>   sVB;
@@ -32,4 +54,6 @@ private:
 	static bool                     sVBDirty;
 	static bool                     sIBDirty;
 	static DirectX::BoundingBox     sLocalAABB;
+
+	int Hp = 100;
 };

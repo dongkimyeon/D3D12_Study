@@ -2,6 +2,7 @@
 #include "Cube.h"
 #include "framework.h"
 #include <random>
+#include <algorithm>
 #include "Camera.h"
 #include "Player.h"
 #include "Bullet.h"
@@ -91,18 +92,17 @@ void Map1Scene::Initialize()
 				cube->SetPosition(x, -1.5f, z);
 				cube->SetScale(1.0f, 0.1f * uid(dre), 1.0f);
 				cube->SetColor({ 0.8f, 0.8f, 0.8f, 1.0f });
-				if (uid(dre) <= 2) { // 20% 확률로 적 생성
 
-				Enemy* enemy = new Enemy();
-				enemy->Initialize(Framework::GetDevice());
-				enemy->SetPosition(x, 0.0f, z);
-				enemy->SetScale(0.04f, 0.04f, 0.04f);
-				mEnemies.push_back(enemy);
-				mGameObjects.push_back(enemy);
-					
-
+				// 플레이어 스폰(row=1,col=1) 반경 5칸 이내 제외, 20% 확률로 적 생성
+				int dr = row - 1, dc = col - 1;
+				if ((dr * dr + dc * dc) >= 25 && uid(dre) <= 2) {
+					Enemy* enemy = new Enemy();
+					enemy->Initialize(Framework::GetDevice());
+					enemy->SetPosition(x, 0.5f, z);
+					enemy->SetScale(0.04f, 0.04f, 0.04f);
+					mEnemies.push_back(enemy);
+					mGameObjects.push_back(enemy);
 				}
-
 			}
 
 			mGameObjects.push_back(cube);
@@ -110,7 +110,6 @@ void Map1Scene::Initialize()
 		}
 	}
 
-	// Update(0) 호출로 worldMatrix + mAABB 갱신 후 캐시 빌드
 	mCubeAABBs.reserve(mWallCubes.size());
 	for (auto* cube : mWallCubes) {
 		cube->Update(0.0f);                          // worldMatrix, mAABB 초기화
@@ -129,12 +128,13 @@ void Map1Scene::Initialize()
 	mGun->AttachTo(mPlayer);
 	mGameObjects.push_back(mGun);
 
-	Enemy* enemy = new Enemy();
-	enemy->Initialize(Framework::GetDevice());
-	enemy->SetPosition(5.0f, 5.0f, 0.0f);
-	enemy->SetScale(0.04f, 0.04f, 0.04f);
-	mEnemies.push_back(enemy);
-	mGameObjects.push_back(enemy);
+	UpdateFlowField();
+	for (auto* e : mEnemies) {
+		e->SetTarget(mPlayer->GetPositionPtr());
+		e->SetColliders(&mCubeAABBs);
+		e->SetFlowField(&mFlowField[0][0], kMazeSize, kMazeSpacing, kMazeOffset);
+		e->SetEnemyList(&mEnemies);
+	}
 
 	for (int i = 0; i < kBulletPoolSize; ++i) {
 		Bullet* b = new Bullet();
@@ -144,8 +144,42 @@ void Map1Scene::Initialize()
 	}
 }
 
+void Map1Scene::UpdateFlowField()
+{
+	XMFLOAT3 pPos = mPlayer->GetPosition();
+	int pRow = std::clamp((int)roundf((pPos.z + kMazeOffset) / kMazeSpacing), 0, kMazeSize - 1);
+	int pCol = std::clamp((int)roundf((pPos.x + kMazeOffset) / kMazeSpacing), 0, kMazeSize - 1);
+
+	memset(mFlowField, -1, sizeof(mFlowField));
+
+	// 정적 배열 BFS (힙 할당 없음)
+	static std::pair<int, int> buf[kMazeSize * kMazeSize];
+	int head = 0, tail = 0;
+
+	if (sMaze[pRow][pCol]) {
+		mFlowField[pRow][pCol] = 0;
+		buf[tail++] = { pRow, pCol };
+	}
+
+	static const int DR[] = { 0, 0, -1, 1 };
+	static const int DC[] = { -1, 1,  0, 0 };
+
+	while (head < tail) {
+		auto [r, c] = buf[head++];
+		for (int d = 0; d < 4; d++) {
+			int nr = r + DR[d], nc = c + DC[d];
+			if (nr < 0 || nr >= kMazeSize || nc < 0 || nc >= kMazeSize) continue;
+			if (sMaze[nr][nc] == 0 || mFlowField[nr][nc] != -1) continue;
+			mFlowField[nr][nc] = mFlowField[r][c] + 1;
+			buf[tail++] = { nr, nc };
+		}
+	}
+}
+
 void Map1Scene::Update(float dt)
 {
+	UpdateFlowField();
+
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
 

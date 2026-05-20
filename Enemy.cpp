@@ -1,4 +1,5 @@
 #include "Enemy.h"
+#include <algorithm>
 
 ComPtr<ID3D12Resource>   Enemy::sVB;
 ComPtr<ID3D12Resource>   Enemy::sIB;
@@ -107,8 +108,120 @@ void Enemy::Initialize(ComPtr<ID3D12Device> device)
 	mLocalAABB = sLocalAABB;
 }
 
+DirectX::BoundingBox Enemy::ComputePhysicsAABB() const
+{
+	XMMATRIX world = XMMatrixScaling(scale.x, scale.y, scale.z)
+	               * XMMatrixTranslation(position.x, position.y, position.z);
+	DirectX::BoundingBox out;
+	sLocalAABB.Transform(out, world);
+	return out;
+}
+
+void Enemy::ResolveWallCollision()
+{
+	DirectX::BoundingBox p = ComputePhysicsAABB();
+
+	for (const auto& c : *mColliders) {
+		float dx = (p.Extents.x + c.Extents.x) - fabsf(p.Center.x - c.Center.x);
+		float dy = (p.Extents.y + c.Extents.y) - fabsf(p.Center.y - c.Center.y);
+		float dz = (p.Extents.z + c.Extents.z) - fabsf(p.Center.z - c.Center.z);
+
+		if (dx <= 0.0f || dy <= 0.0f || dz <= 0.0f) continue;
+
+		if (dx <= dy && dx <= dz) {
+			float push = (p.Center.x > c.Center.x) ? dx : -dx;
+			position.x += push;
+			p.Center.x += push;
+		} else if (dy <= dx && dy <= dz) {
+			float push = (p.Center.y > c.Center.y) ? dy : -dy;
+			position.y += push;
+			p.Center.y += push;
+		} else {
+			float push = (p.Center.z > c.Center.z) ? dz : -dz;
+			position.z += push;
+			p.Center.z += push;
+		}
+	}
+}
+
+void Enemy::SetFlowField(const int* field, int gridSize, float spacing, float offset)
+{
+	mFlowField = field;
+	mGridSize  = gridSize;
+	mSpacing   = spacing;
+	mOffset    = offset;
+}
+
+// flow field에서 현재 셀 이웃 중 플레이어에 가장 가까운 셀의 월드 중심을 반환
+XMFLOAT3 Enemy::GetNextWaypoint() const
+{
+	int eRow = std::clamp((int)roundf((position.z + mOffset) / mSpacing), 0, mGridSize - 1);
+	int eCol = std::clamp((int)roundf((position.x + mOffset) / mSpacing), 0, mGridSize - 1);
+
+	int myDist = mFlowField[eRow * mGridSize + eCol];
+	if (myDist <= 0) {
+		// 플레이어 셀에 도착했거나 flow field 미도달, 직접 타겟으로
+		return *mTarget;
+	}
+
+	static const int DR[] = { 0, 0, -1, 1 };
+	static const int DC[] = { -1, 1,  0, 0 };
+
+	int bestRow = eRow, bestCol = eCol, bestDist = myDist;
+	for (int d = 0; d < 4; d++) {
+		int nr = eRow + DR[d], nc = eCol + DC[d];
+		if (nr < 0 || nr >= mGridSize || nc < 0 || nc >= mGridSize) continue;
+		int dist = mFlowField[nr * mGridSize + nc];
+		if (dist >= 0 && dist < bestDist) {
+			bestDist = dist;
+			bestRow  = nr;
+			bestCol  = nc;
+		}
+	}
+
+	return { bestCol * mSpacing - mOffset, position.y, bestRow * mSpacing - mOffset };
+}
+
+void Enemy::SeparateFromEnemies()
+{
+	static constexpr float kSepRadius = 0.8f;
+	XMVECTOR myPos = XMLoadFloat3(&position);
+
+	for (auto* other : *mEnemies) {
+		if (other == this) continue;
+		XMFLOAT3 otherPosF = other->GetPosition();
+		XMVECTOR otherPos  = XMLoadFloat3(&otherPosF);
+		XMVECTOR diff = myPos - otherPos;
+		float dist = XMVectorGetX(XMVector3LengthEst(diff));
+		if (dist < kSepRadius && dist > 0.001f) {
+			myPos += XMVector3Normalize(diff) * ((kSepRadius - dist) * 0.5f);
+		}
+	}
+	XMStoreFloat3(&position, myPos);
+}
+
 void Enemy::Update(float dt)
 {
+	if (mTarget && mFlowField) {
+		XMFLOAT3 waypoint = GetNextWaypoint();
+
+		XMVECTOR pos  = XMLoadFloat3(&position);
+		XMVECTOR wp   = XMLoadFloat3(&waypoint);
+		XMVECTOR toWP = XMVectorSetY(wp - pos, 0.0f); // 수평 이동만 (공중 부유)
+		float dist = XMVectorGetX(XMVector3LengthEst(toWP));
+
+		if (dist > 0.05f) {
+			pos += XMVector3Normalize(toWP) * mMoveSpeed * dt;
+			XMStoreFloat3(&position, pos);
+
+			XMFLOAT3 d; XMStoreFloat3(&d, toWP);
+			rotation.y = atan2f(d.x, d.z);
+		}
+
+		if (mColliders) ResolveWallCollision();
+		if (mEnemies)   SeparateFromEnemies();
+	}
+
 	GameObject::Update(dt);
 }
 

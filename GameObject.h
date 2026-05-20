@@ -17,6 +17,7 @@ public:
 	/*-------------------------GETTER--------------------------*/
 	XMFLOAT4X4 GetWorldMatrix() const { return worldMatrix; }
 	XMFLOAT3 GetPosition() const { return position; }
+	const XMFLOAT3* GetPositionPtr() const { return &position; }
 	XMFLOAT3 GetRotation() const { return rotation; }
 	XMFLOAT3 GetScale() const { return scale; }
 	XMFLOAT4 GetForwardVector() const { return forward_vector; }
