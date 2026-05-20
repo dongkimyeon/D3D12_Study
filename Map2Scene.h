@@ -1,29 +1,40 @@
 #pragma once
 #include "Scene.h"
 #include "GameObject.h"
-
-class HeliBody;
-class HeliTale;
-class HeliBlade;
+#include "Cube.h"
+#include "Player.h"
+#include "Gun.h"
+#include "Enemy.h"
+#include "Bullet.h"
 
 class Map2Scene : public Scene
 {
 public:
-    Map2Scene();
-    virtual ~Map2Scene();
+	Map2Scene();
+	virtual ~Map2Scene();
 
-    virtual void Initialize() override;
-    virtual void Update(float dt) override;
-    virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList) override;
-    virtual void Release() override;
+	virtual void Initialize() override;
+	virtual void Update(float dt) override;
+	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList) override;
+	virtual void Release() override;
 
 private:
-    std::vector<GameObject*> mGameObjects;
-	int mSelectedIndex = -1; // -1은 아무것도 선택되지 않음, 0 이상은 인덱스
-	
-	//unique_ptr로 변경
-	std::unique_ptr<HeliBody> mHeliBody = nullptr;
-	std::unique_ptr<HeliTale> mHeliTale = nullptr;
-	std::unique_ptr<HeliBlade> mHeliBlade = nullptr;
+	std::vector<GameObject*> mGameObjects;
+	std::vector<Cube*>       mWallCubes;
+	std::vector<Enemy*>      mEnemies;
+	Player* mPlayer;
+	Gun*    mGun;
 
+	std::vector<DirectX::BoundingBox> mCubeAABBs;
+
+	std::vector<Bullet*> mBullets;
+	static constexpr int kBulletPoolSize = 10;
+	void FireBullet();
+
+	// Map2는 41x41 그리드 (Map1의 51x51과 다른 구조)
+	static constexpr int   kMazeSize    = 41;
+	static constexpr float kMazeSpacing = 2.0f;
+	static constexpr float kMazeOffset  = (kMazeSize - 1) * kMazeSpacing * 0.5f;
+	int mFlowField[kMazeSize][kMazeSize];
+	void UpdateFlowField();
 };

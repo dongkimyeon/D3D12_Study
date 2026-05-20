@@ -159,6 +159,9 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Item_ATK.cpp" />
+    <ClCompile Include="Item_HP.cpp" />
+    <ClCompile Include="Item_SPEED.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Map1.cpp" />
     <ClCompile Include="Map1Scene.cpp" />
@@ -206,6 +209,9 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="Item_ATK.h" />
+    <ClInclude Include="Item_HP.h" />
+    <ClInclude Include="Item_SPEED.h" />
     <ClInclude Include="LoadScene.h" />
     <ClInclude Include="Map1.h" />
     <ClInclude Include="Map1Scene.h" />

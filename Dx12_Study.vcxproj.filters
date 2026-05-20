@@ -61,6 +61,9 @@
     <Filter Include="GameObject\InGameObj">
       <UniqueIdentifier>{121735b4-cd6d-4ea5-a9f9-a4458768ce18}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DropItem">
+      <UniqueIdentifier>{b11ad97b-11af-4e2a-8dc1-5154150ae038}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -167,6 +170,15 @@
     </ClCompile>
     <ClCompile Include="Enemy.cpp">
       <Filter>GameObject\InGameObj</Filter>
+    </ClCompile>
+    <ClCompile Include="Item_ATK.cpp">
+      <Filter>DropItem</Filter>
+    </ClCompile>
+    <ClCompile Include="Item_SPEED.cpp">
+      <Filter>DropItem</Filter>
+    </ClCompile>
+    <ClCompile Include="Item_HP.cpp">
+      <Filter>DropItem</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -286,6 +298,15 @@
     </ClInclude>
     <ClInclude Include="Enemy.h">
       <Filter>GameObject\InGameObj</Filter>
+    </ClInclude>
+    <ClInclude Include="Item_ATK.h">
+      <Filter>DropItem</Filter>
+    </ClInclude>
+    <ClInclude Include="Item_HP.h">
+      <Filter>DropItem</Filter>
+    </ClInclude>
+    <ClInclude Include="Item_SPEED.h">
+      <Filter>DropItem</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
