@@ -148,7 +148,7 @@ void Map1Scene::FireBullet()
 {
 	for (auto* b : mBullets) {
 		if (!b->IsActive()) {
-			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetForwardDir());
+			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir());
 			break;
 		}
 	}

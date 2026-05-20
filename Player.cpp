@@ -47,7 +47,11 @@ void Player::Update(float dt)
 		POINT center = { rc.right / 2, rc.bottom / 2 };
 		ClientToScreen(hwnd, &center);
 		POINT cur; GetCursorPos(&cur);
-		if (!mFirstMouse) mYaw += (cur.x - center.x) * 0.002f;
+		if (!mFirstMouse) {
+			mPitch += (cur.y - center.y) * 0.002f;
+			mYaw += (cur.x - center.x) * 0.002f;
+		}
+
 		mFirstMouse = false;
 		SetCursorPos(center.x, center.y);
 
@@ -86,8 +90,10 @@ void Player::Update(float dt)
 		mOnGround = false;
 		if (mColliders) ResolveVertical(*mColliders);
 
+		rotation.x = mPitch;
 		rotation.y = mYaw;
-		Camera::SetFollowTarget(position, mYaw);
+	
+		Camera::SetFollowTarget(position, mPitch, mYaw);
 	} else {
 		mFirstMouse = true;
 	}

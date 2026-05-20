@@ -14,7 +14,11 @@ public:
 	virtual DirectX::BoundingBox GetWorldAABB() const override;
 
 	float    GetYaw()        const { return mYaw; }
+	float    GetPitch()      const { return mPitch; }
 	XMFLOAT3 GetForwardDir() const { return { sinf(mYaw), 0.0f, cosf(mYaw) }; }
+	XMFLOAT3 GetLookDir()    const {
+		return { cosf(mPitch) * sinf(mYaw), -sinf(mPitch), cosf(mPitch) * cosf(mYaw) };
+	}
 	void  SetColliders(const std::vector<DirectX::BoundingBox>* colliders) { mColliders = colliders; }
 
 private:
@@ -27,6 +31,7 @@ private:
 	DirectX::BoundingBox mLocalAABB;
 
 	// 이동/시점
+	float mPitch = 0.0f;
 	float mYaw        = 0.0f;
 	float mMoveSpeed  = 5.0f;
 	bool  mFirstMouse = true;

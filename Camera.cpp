@@ -16,11 +16,13 @@ eCameraMode Camera::sMode = eCameraMode::FirstPerson;
 
 extern bool debugMode;
 
-void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerYaw)
+void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerPitch ,float playerYaw)
 {
 	XMMATRIX rotM = XMMatrixRotationY(playerYaw);
-	XMVECTOR fwd = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
-	XMVECTOR rgt = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM);
+	CXMMATRIX pitchM = XMMatrixRotationX(playerPitch);
+
+	XMVECTOR fwd = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), pitchM * rotM);
+	XMVECTOR rgt = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), pitchM * rotM);
 	XMStoreFloat3(&camForward, fwd);
 	XMStoreFloat3(&camRight, rgt);
 	camUp = { 0, 1, 0 };

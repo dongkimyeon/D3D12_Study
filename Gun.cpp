@@ -13,7 +13,7 @@ void Gun::Initialize(ComPtr<ID3D12Device> device)
 {
 	GameObject::Initialize(device);
 	LoadFromOBJ("AK-74.obj", device);
-	BakeScale(0.0015f, 0.0015f, 0.0015f);
+	BakeScale(0.001f, 0.001f, 0.001f);
 	BakeRotation(0.0f, 270.0f, 0.0f);
 	for (auto& v : vertices) {
 		v.r = 0.0f; v.g = 1.0f; v.b = 0.0f; v.a = 1.0f;
@@ -24,13 +24,14 @@ void Gun::Initialize(ComPtr<ID3D12Device> device)
 void Gun::Update(float dt)
 {
 	if (mOwner) {
-		float yaw           = mOwner->GetYaw();
-		XMFLOAT3 playerPos  = mOwner->GetPosition();
+		float yaw          = mOwner->GetYaw();
+		float pitch        = mOwner->GetPitch();
+		XMFLOAT3 playerPos = mOwner->GetPosition();
 
-		XMMATRIX rotY    = XMMatrixRotationY(yaw);
-		XMVECTOR right   = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotY);
-		XMVECTOR up      = XMVectorSet(0, 1, 0, 0);
-		XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotY);
+		XMMATRIX rotM    = XMMatrixRotationX(pitch) * XMMatrixRotationY(yaw);
+		XMVECTOR right   = XMVector3TransformCoord(XMVectorSet(1, 0, 0, 0), rotM);
+		XMVECTOR up      = XMVector3TransformCoord(XMVectorSet(0, 1, 0, 0), rotM);
+		XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
 
 		XMVECTOR gunPos = XMLoadFloat3(&playerPos)
 			+ right   * kOffsetRight
@@ -38,6 +39,7 @@ void Gun::Update(float dt)
 			+ forward * kOffsetForward;
 
 		XMStoreFloat3(&position, gunPos);
+		rotation.x = pitch;
 		rotation.y = yaw;
 	}
 
@@ -48,8 +50,9 @@ XMFLOAT3 Gun::GetMuzzlePosition() const
 {
 	if (!mOwner) return position;
 	float    yaw     = mOwner->GetYaw();
-	XMMATRIX rotY    = XMMatrixRotationY(yaw);
-	XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotY);
+	float    pitch   = mOwner->GetPitch();
+	XMMATRIX rotM    = XMMatrixRotationX(pitch) * XMMatrixRotationY(yaw);
+	XMVECTOR forward = XMVector3TransformCoord(XMVectorSet(0, 0, 1, 0), rotM);
 	XMVECTOR muzzle  = XMLoadFloat3(&position) + forward * 0.5f;
 	XMFLOAT3 result;
 	XMStoreFloat3(&result, muzzle);
