@@ -6,6 +6,10 @@
 #include "Gun.h"
 #include "Enemy.h"
 #include "Bullet.h"
+#include "Item.h"
+#include "Item_ATK.h"
+#include "Item_HP.h"
+#include "Item_SPEED.h"
 
 class Map2Scene : public Scene
 {
@@ -30,6 +34,11 @@ private:
 	std::vector<Bullet*> mBullets;
 	static constexpr int kBulletPoolSize = 10;
 	void FireBullet();
+	void CheckBulletEnemyCollision();
+
+	std::vector<Item*> mItems;
+	void SpawnItems();
+	void CheckItemPickup();
 
 	// Map2는 41x41 그리드 (Map1의 51x51과 다른 구조)
 	static constexpr int   kMazeSize    = 41;

@@ -31,12 +31,13 @@ void Bullet::Initialize(ComPtr<ID3D12Device> device)
 	UpdateVertexBuffer();
 }
 
-void Bullet::Fire(XMFLOAT3 spawnPos, XMFLOAT3 dir, float speed)
+void Bullet::Fire(XMFLOAT3 spawnPos, XMFLOAT3 dir, int damage, float speed)
 {
 	position = spawnPos;
 	XMVECTOR d = XMVector3Normalize(XMLoadFloat3(&dir));
 	XMStoreFloat3(&mDir, d);
 	mSpeed  = speed;
+	mDamage = damage;
 	mLife   = 3.0f;
 	mActive = true;
 }

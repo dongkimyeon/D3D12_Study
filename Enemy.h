@@ -21,6 +21,11 @@ public:
 	void SetColliders(const std::vector<DirectX::BoundingBox>* c)   { mColliders = c;   }
 	void SetEnemyList(const std::vector<Enemy*>* list)              { mEnemies   = list; }
 	void SetFlowField(const int* field, int gridSize, float spacing, float offset);
+	void SetDetectRange(float r) { mDetectRange = r; }
+
+	void TakeDamage(int dmg) { mHp -= dmg; if (mHp <= 0) { mHp = 0; mAlive = false; } }
+	bool IsAlive()    const  { return mAlive; }
+	int  GetHp()      const  { return mHp; }
 
 private:
 	DirectX::BoundingBox ComputePhysicsAABB() const;
@@ -38,7 +43,9 @@ private:
 	float mSpacing   = 0.0f;
 	float mOffset    = 0.0f;
 
-	float mMoveSpeed = 3.0f;
+	float mMoveSpeed   = 3.0f;
+	float mDetectRange = 10.0f;  // 이 거리 안에 들어오면 추적 시작
+	bool  mIsChasing   = false;  // 한 번 감지되면 true로 유지
 
 	DirectX::BoundingBox mLocalAABB;
 
@@ -55,5 +62,6 @@ private:
 	static bool                     sIBDirty;
 	static DirectX::BoundingBox     sLocalAABB;
 
-	int Hp = 100;
+	int  mHp    = 100;
+	bool mAlive = true;
 };

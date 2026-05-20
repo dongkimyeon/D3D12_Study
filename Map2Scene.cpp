@@ -6,6 +6,9 @@
 #include "Camera.h"
 #include "Player.h"
 #include "Bullet.h"
+#include "Item_ATK.h"
+#include "Item_HP.h"
+#include "Item_SPEED.h"
 
 extern bool debugMode;
 
@@ -64,6 +67,9 @@ void Map2Scene::Initialize()
 {
 	Cube::LoadSharedMesh(Framework::GetDevice());
 	Enemy::LoadSharedMesh(Framework::GetDevice());
+	Item_ATK::LoadSharedMesh(Framework::GetDevice());
+	Item_HP::LoadSharedMesh(Framework::GetDevice());
+	Item_SPEED::LoadSharedMesh(Framework::GetDevice());
 
 	// Map1(seed=0)과 다른 시드 사용
 	srand(42);
@@ -85,7 +91,8 @@ void Map2Scene::Initialize()
 	CarveRoom(33, 37, 33, 37);  // 8
 
 	std::default_random_engine dre(std::random_device{}());
-	std::uniform_int_distribution<int> uid(1, 10);
+	std::uniform_int_distribution<int> height_uid(1, 10);
+	std::uniform_int_distribution<int> enemy_uid(1, 100);
 
 	for (int row = 0; row < GRID_SIZE2; ++row)
 	{
@@ -109,15 +116,15 @@ void Map2Scene::Initialize()
 			else // 바닥
 			{
 				cube->SetPosition(x, -2.0f, z);
-				cube->SetScale(1.0f, 0.1f * uid(dre), 1.0f);
+				cube->SetScale(1.0f, 0.1f * height_uid(dre), 1.0f);
 				// Map1(연회색)과 달리 모래색 바닥
 				cube->SetColor({ 0.85f, 0.65f, 0.35f, 1.0f });
 
 				int dr = row - 1, dc = col - 1;
-				if ((dr * dr + dc * dc) >= 25 && uid(dre) <= 2) {
+				if ((dr * dr + dc * dc) >= 25 && enemy_uid(dre) <= 5) {
 					Enemy* enemy = new Enemy();
 					enemy->Initialize(Framework::GetDevice());
-					enemy->SetPosition(x, 0.5f, z);
+					enemy->SetPosition(x, 0.0f, z);
 					enemy->SetScale(0.04f, 0.04f, 0.04f);
 					mEnemies.push_back(enemy);
 					mGameObjects.push_back(enemy);
@@ -160,6 +167,51 @@ void Map2Scene::Initialize()
 		b->Initialize(Framework::GetDevice());
 		b->SetColliders(&mCubeAABBs);
 		mBullets.push_back(b);
+	}
+
+	SpawnItems();
+}
+
+void Map2Scene::SpawnItems()
+{
+	std::vector<std::pair<float, float>> floors;
+	for (int row = 0; row < GRID_SIZE2; ++row) {
+		for (int col = 0; col < GRID_SIZE2; ++col) {
+			if (sMaze2[row][col] == 0) continue;
+			int dr = row - 1, dc = col - 1;
+			if ((dr * dr + dc * dc) < 25) continue;
+			floors.push_back({ col * SPACING2 - OFFSET2, row * SPACING2 - OFFSET2 });
+		}
+	}
+
+	std::shuffle(floors.begin(), floors.end(), std::default_random_engine{ std::random_device{}() });
+
+	static constexpr int kPerType = 10;
+	if ((int)floors.size() < kPerType * 3) return;
+
+	int idx = 0;
+	auto spawn = [&](Item* item) {
+		item->Initialize(Framework::GetDevice());
+		item->SetPosition(floors[idx].first, 0.5f, floors[idx].second);
+		mItems.push_back(item);
+		++idx;
+	};
+
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_ATK());
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_HP());
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_SPEED());
+}
+
+void Map2Scene::CheckItemPickup()
+{
+	XMFLOAT3 pPos = mPlayer->GetPosition();
+	for (auto* item : mItems) {
+		if (!item->IsActive()) continue;
+		XMFLOAT3 iPos = item->GetPosition();
+		float dx = pPos.x - iPos.x;
+		float dz = pPos.z - iPos.z;
+		if (dx * dx + dz * dz < 2.0f * 2.0f)
+			item->OnPickup(mPlayer);
 	}
 }
 
@@ -206,14 +258,37 @@ void Map2Scene::Update(float dt)
 
 	for (auto* b : mBullets)
 		b->Update(dt);
+
+	CheckBulletEnemyCollision();
+
+	for (auto* item : mItems)
+		item->Update(dt);
+
+	CheckItemPickup();
 }
 
 void Map2Scene::FireBullet()
 {
 	for (auto* b : mBullets) {
 		if (!b->IsActive()) {
-			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir());
+			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir(), mPlayer->GetATK());
 			break;
+		}
+	}
+}
+
+void Map2Scene::CheckBulletEnemyCollision()
+{
+	for (auto* b : mBullets) {
+		if (!b->IsActive()) continue;
+		DirectX::BoundingBox bAABB = b->GetWorldAABB();
+		for (auto* e : mEnemies) {
+			if (!e->IsAlive()) continue;
+			if (bAABB.Intersects(e->GetWorldAABB())) {
+				e->TakeDamage(b->GetDamage());
+				b->Deactivate();
+				break;
+			}
 		}
 	}
 }
@@ -233,9 +308,16 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
-	ImGui::Begin("Map2");
-	ImGui::Text("Camera: (%.2f, %.2f, %.2f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
-	ImGui::Text("Total: %d cubes", (int)mGameObjects.size());
+	for (auto* item : mItems)
+		if (item->IsActive())
+			item->Render(commandList, view, proj);
+
+	ImGui::Begin("Player");
+	ImGui::Text("HP    : %d / %d", mPlayer->GetHP(), 100);
+	ImGui::ProgressBar(mPlayer->GetHP() / 100.0f, ImVec2(-1, 0));
+	ImGui::Text("ATK   : %d", mPlayer->GetATK());
+	ImGui::Text("Speed : %.1f", mPlayer->GetMoveSpeed());
+	ImGui::Separator();
 	ImGui::Text("Mode: %s | F6=Debug F5=1st/3rd",
 		debugMode ? "Debug" :
 		(Camera::sMode == eCameraMode::FirstPerson ? "1st Person" : "3rd Person"));
@@ -252,6 +334,11 @@ void Map2Scene::Release()
 	mCubeAABBs.clear();
 	for (auto* b : mBullets) delete b;
 	mBullets.clear();
+	for (auto* item : mItems) delete item;
+	mItems.clear();
 	Cube::UnloadSharedMesh();
 	Enemy::UnloadSharedMesh();
+	Item_ATK::UnloadSharedMesh();
+	Item_HP::UnloadSharedMesh();
+	Item_SPEED::UnloadSharedMesh();
 }

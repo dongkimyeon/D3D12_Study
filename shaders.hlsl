@@ -1,7 +1,5 @@
 cbuffer Constants : register(b0)
 {
-    // 더 이상 C++에서 단일 색상을 받지 않으므로 제거하거나 무시하도록 처리
-    // 행렬의 바이트 정렬을 맞추기 위해 더미 변수로 두셔도 무방합니다.
     float4 dummyColor; // 기존의 color. 
     float4x4 worldViewProj;
 };

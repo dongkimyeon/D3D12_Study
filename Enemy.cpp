@@ -188,7 +188,7 @@ void Enemy::SeparateFromEnemies()
 	XMVECTOR myPos = XMLoadFloat3(&position);
 
 	for (auto* other : *mEnemies) {
-		if (other == this) continue;
+		if (other == this || !other->IsAlive()) continue;
 		XMFLOAT3 otherPosF = other->GetPosition();
 		XMVECTOR otherPos  = XMLoadFloat3(&otherPosF);
 		XMVECTOR diff = myPos - otherPos;
@@ -202,7 +202,22 @@ void Enemy::SeparateFromEnemies()
 
 void Enemy::Update(float dt)
 {
+	if (!mAlive) return;
 	if (mTarget && mFlowField) {
+		// 아직 추적 중이 아니면 감지 범위 체크
+		if (!mIsChasing) {
+			XMVECTOR ep = XMLoadFloat3(&position);
+			XMVECTOR tp = XMLoadFloat3(mTarget);
+			float dist = XMVectorGetX(XMVector3LengthEst(tp - ep));
+			if (dist <= mDetectRange)
+				mIsChasing = true;
+		}
+
+		if (!mIsChasing) {
+			GameObject::Update(dt);
+			return;
+		}
+
 		XMFLOAT3 waypoint = GetNextWaypoint();
 
 		XMVECTOR pos  = XMLoadFloat3(&position);
@@ -227,6 +242,7 @@ void Enemy::Update(float dt)
 
 void Enemy::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
+	if (!mAlive) return;
 	if (sIndexCount == 0) return;
 
 	auto flush = [&](ComPtr<ID3D12Resource>& gpu, ComPtr<ID3D12Resource>& staging,

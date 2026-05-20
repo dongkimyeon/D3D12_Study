@@ -6,6 +6,9 @@
 #include "Camera.h"
 #include "Player.h"
 #include "Bullet.h"
+#include "Item_ATK.h"
+#include "Item_HP.h"
+#include "Item_SPEED.h"
 
 extern bool debugMode;
 
@@ -57,6 +60,9 @@ void Map1Scene::Initialize()
 {
 	Cube::LoadSharedMesh(Framework::GetDevice());
 	Enemy::LoadSharedMesh(Framework::GetDevice());
+	Item_ATK::LoadSharedMesh(Framework::GetDevice());
+	Item_HP::LoadSharedMesh(Framework::GetDevice());
+	Item_SPEED::LoadSharedMesh(Framework::GetDevice());
 
 	srand(0);
 	memset(sMaze, 0, sizeof(sMaze));
@@ -142,6 +148,38 @@ void Map1Scene::Initialize()
 		b->SetColliders(&mCubeAABBs);
 		mBullets.push_back(b);
 	}
+
+	SpawnItems();
+}
+
+void Map1Scene::SpawnItems()
+{
+	std::vector<std::pair<float, float>> floors;
+	for (int row = 0; row < GRID_SIZE; ++row) {
+		for (int col = 0; col < GRID_SIZE; ++col) {
+			if (sMaze[row][col] == 0) continue;
+			int dr = row - 1, dc = col - 1;
+			if ((dr * dr + dc * dc) < 25) continue;
+			floors.push_back({ col * SPACING - OFFSET, row * SPACING - OFFSET });
+		}
+	}
+
+	std::shuffle(floors.begin(), floors.end(), std::default_random_engine{ std::random_device{}() });
+
+	static constexpr int kPerType = 10;
+	if ((int)floors.size() < kPerType * 3) return;
+
+	int idx = 0;
+	auto spawn = [&](Item* item) {
+		item->Initialize(Framework::GetDevice());
+		item->SetPosition(floors[idx].first, 0.5f, floors[idx].second);
+		mItems.push_back(item);
+		++idx;
+	};
+
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_ATK());
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_HP());
+	for (int i = 0; i < kPerType; ++i) spawn(new Item_SPEED());
 }
 
 void Map1Scene::UpdateFlowField()
@@ -176,6 +214,19 @@ void Map1Scene::UpdateFlowField()
 	}
 }
 
+void Map1Scene::CheckItemPickup()
+{
+	XMFLOAT3 pPos = mPlayer->GetPosition();
+	for (auto* item : mItems) {
+		if (!item->IsActive()) continue;
+		XMFLOAT3 iPos = item->GetPosition();
+		float dx = pPos.x - iPos.x;
+		float dz = pPos.z - iPos.z;
+		if (dx * dx + dz * dz < 2.0f * 2.0f)
+			item->OnPickup(mPlayer);
+	}
+}
+
 void Map1Scene::Update(float dt)
 {
 	UpdateFlowField();
@@ -188,14 +239,37 @@ void Map1Scene::Update(float dt)
 
 	for (auto* b : mBullets)
 		b->Update(dt);
+
+	CheckBulletEnemyCollision();
+
+	for (auto* item : mItems)
+		item->Update(dt);
+
+	CheckItemPickup();
 }
 
 void Map1Scene::FireBullet()
 {
 	for (auto* b : mBullets) {
 		if (!b->IsActive()) {
-			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir());
+			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir(), mPlayer->GetATK());
 			break;
+		}
+	}
+}
+
+void Map1Scene::CheckBulletEnemyCollision()
+{
+	for (auto* b : mBullets) {
+		if (!b->IsActive()) continue;
+		DirectX::BoundingBox bAABB = b->GetWorldAABB();
+		for (auto* e : mEnemies) {
+			if (!e->IsAlive()) continue;
+			if (bAABB.Intersects(e->GetWorldAABB())) {
+				e->TakeDamage(b->GetDamage());
+				b->Deactivate();
+				break;
+			}
 		}
 	}
 }
@@ -215,9 +289,16 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
-	ImGui::Begin("Map1");
-	ImGui::Text("Camera: (%.2f, %.2f, %.2f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
-	ImGui::Text("Total: %d cubes", (int)mGameObjects.size());
+	for (auto* item : mItems)
+		if (item->IsActive())
+			item->Render(commandList, view, proj);
+
+	ImGui::Begin("Player");
+	ImGui::Text("HP    : %d / %d", mPlayer->GetHP(), 100);
+	ImGui::ProgressBar(mPlayer->GetHP() / 100.0f, ImVec2(-1, 0));
+	ImGui::Text("ATK   : %d", mPlayer->GetATK());
+	ImGui::Text("Speed : %.1f", mPlayer->GetMoveSpeed());
+	ImGui::Separator();
 	ImGui::Text("Mode: %s | F6=Debug F5=1st/3rd",
 		debugMode ? "Debug" :
 		(Camera::sMode == eCameraMode::FirstPerson ? "1st Person" : "3rd Person"));
@@ -234,6 +315,11 @@ void Map1Scene::Release()
 	mCubeAABBs.clear();
 	for (auto* b : mBullets) delete b;
 	mBullets.clear();
+	for (auto* item : mItems) delete item;
+	mItems.clear();
 	Cube::UnloadSharedMesh();
 	Enemy::UnloadSharedMesh();
+	Item_ATK::UnloadSharedMesh();
+	Item_HP::UnloadSharedMesh();
+	Item_SPEED::UnloadSharedMesh();
 }

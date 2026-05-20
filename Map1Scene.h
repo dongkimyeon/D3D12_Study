@@ -6,6 +6,10 @@
 #include "Gun.h"
 #include "Enemy.h"
 #include "Bullet.h"
+#include "Item.h"
+#include "Item_ATK.h"
+#include "Item_HP.h"
+#include "Item_SPEED.h"
 
 class Map1Scene : public Scene
 {
@@ -31,6 +35,11 @@ private:
 	std::vector<Bullet*> mBullets;
 	static constexpr int kBulletPoolSize = 10;
 	void FireBullet();
+	void CheckBulletEnemyCollision();
+
+	std::vector<Item*> mItems;
+	void SpawnItems();
+	void CheckItemPickup();
 
 	// Flow field (BFS from player, 각 셀 = 플레이어까지 거리)
 	static constexpr int   kMazeSize    = 51;
