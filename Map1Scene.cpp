@@ -86,11 +86,23 @@ void Map1Scene::Initialize()
 				cube->SetScale(1.0f, 3.0f, 1.0f);
 				cube->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
 			}
-			else
+			else //바닥
 			{
 				cube->SetPosition(x, -1.5f, z);
 				cube->SetScale(1.0f, 0.1f * uid(dre), 1.0f);
 				cube->SetColor({ 0.8f, 0.8f, 0.8f, 1.0f });
+				if (uid(dre) <= 2) { // 20% 확률로 적 생성
+
+				Enemy* enemy = new Enemy();
+				enemy->Initialize(Framework::GetDevice());
+				enemy->SetPosition(x, 0.0f, z);
+				enemy->SetScale(0.04f, 0.04f, 0.04f);
+				mEnemies.push_back(enemy);
+				mGameObjects.push_back(enemy);
+					
+
+				}
+
 			}
 
 			mGameObjects.push_back(cube);
