@@ -29,6 +29,7 @@ public:
 	void AddHP(int amount)         { mHP = std::min(mHP + amount, kMaxHP); }
 	void AddATK(int amount)        { mATK += amount; }
 	void AddMoveSpeed(float amount){ mMoveSpeed += amount; }
+	void TakeDamage(int dmg)       { if (mInvTimer <= 0.0f) { mHP -= dmg; if (mHP < 0) mHP = 0; mInvTimer = kInvDuration; } }
 
 private:
 	// 현재 position + mYaw 기준으로 물리 AABB 계산 (worldMatrix 갱신 전에도 사용 가능)
@@ -42,7 +43,9 @@ private:
 	// 스탯
 	int   mHP        = 100;
 	int   mATK       = 20;
-	static constexpr int kMaxHP = 100;
+	static constexpr int   kMaxHP       = 100;
+	static constexpr float kInvDuration = 1.0f;
+	float mInvTimer  = 0.0f;
 
 	// 이동/시점
 	float mPitch      = 0.0f;

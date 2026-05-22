@@ -119,7 +119,7 @@ void Map1Scene::Initialize()
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	// 입구: row=0,col=1 → 월드(-48, z=-50). 바로 안쪽 z=-48에 배치
-	mPlayer->SetPosition(-48.0f, 0.0f, -48.0f);
+	mPlayer->SetPosition(-48.0f, 2.0f, -48.0f);
 	mPlayer->SetColliders(&mCubeAABBs);
 	mGameObjects.push_back(mPlayer);
 
@@ -191,6 +191,7 @@ void Map1Scene::Update(float dt)
 		b->Update(dt);
 
 	CheckBulletEnemyCollision();
+	CheckEnemyPlayerCollision();
 }
 
 void Map1Scene::FireBullet()
@@ -200,6 +201,16 @@ void Map1Scene::FireBullet()
 			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir(), mPlayer->GetATK());
 			break;
 		}
+	}
+}
+
+void Map1Scene::CheckEnemyPlayerCollision()
+{
+	DirectX::BoundingBox playerAABB = mPlayer->GetWorldAABB();
+	for (auto* e : mEnemies) {
+		if (!e->IsAlive()) continue;
+		if (e->GetWorldAABB().Intersects(playerAABB))
+			mPlayer->TakeDamage(10);
 	}
 }
 
@@ -234,16 +245,6 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
-	ImGui::Begin("Player");
-	ImGui::Text("HP    : %d / %d", mPlayer->GetHP(), 100);
-	ImGui::ProgressBar(mPlayer->GetHP() / 100.0f, ImVec2(-1, 0));
-	ImGui::Text("ATK   : %d", mPlayer->GetATK());
-	ImGui::Text("Speed : %.1f", mPlayer->GetMoveSpeed());
-	ImGui::Separator();
-	ImGui::Text("Mode: %s | F6=Debug F5=1st/3rd",
-		debugMode ? "Debug" :
-		(Camera::sMode == eCameraMode::FirstPerson ? "1st Person" : "3rd Person"));
-	ImGui::End();
 }
 
 void Map1Scene::Release()

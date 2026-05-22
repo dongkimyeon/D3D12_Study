@@ -260,6 +260,7 @@ void Map2Scene::Update(float dt)
 		b->Update(dt);
 
 	CheckBulletEnemyCollision();
+	CheckEnemyPlayerCollision();
 
 	for (auto* item : mItems)
 		item->Update(dt);
@@ -274,6 +275,16 @@ void Map2Scene::FireBullet()
 			b->Fire(mGun->GetMuzzlePosition(), mPlayer->GetLookDir(), mPlayer->GetATK());
 			break;
 		}
+	}
+}
+
+void Map2Scene::CheckEnemyPlayerCollision()
+{
+	DirectX::BoundingBox playerAABB = mPlayer->GetWorldAABB();
+	for (auto* e : mEnemies) {
+		if (!e->IsAlive()) continue;
+		if (e->GetWorldAABB().Intersects(playerAABB))
+			mPlayer->TakeDamage(10);
 	}
 }
 
@@ -312,16 +323,6 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		if (item->IsActive())
 			item->Render(commandList, view, proj);
 
-	ImGui::Begin("Player");
-	ImGui::Text("HP    : %d / %d", mPlayer->GetHP(), 100);
-	ImGui::ProgressBar(mPlayer->GetHP() / 100.0f, ImVec2(-1, 0));
-	ImGui::Text("ATK   : %d", mPlayer->GetATK());
-	ImGui::Text("Speed : %.1f", mPlayer->GetMoveSpeed());
-	ImGui::Separator();
-	ImGui::Text("Mode: %s | F6=Debug F5=1st/3rd",
-		debugMode ? "Debug" :
-		(Camera::sMode == eCameraMode::FirstPerson ? "1st Person" : "3rd Person"));
-	ImGui::End();
 }
 
 void Map2Scene::Release()

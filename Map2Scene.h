@@ -35,6 +35,7 @@ private:
 	static constexpr int kBulletPoolSize = 10;
 	void FireBullet();
 	void CheckBulletEnemyCollision();
+	void CheckEnemyPlayerCollision();
 
 	std::vector<Item*> mItems;
 	void SpawnItems();

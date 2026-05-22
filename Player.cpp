@@ -39,6 +39,8 @@ void Player::Initialize(ComPtr<ID3D12Device> device)
 
 void Player::Update(float dt)
 {
+	if (mInvTimer > 0.0f) mInvTimer -= dt;
+
 	if (!debugMode) {
 		// --- 마우스 룩 ---
 		HWND hwnd = Framework::GetHwnd();

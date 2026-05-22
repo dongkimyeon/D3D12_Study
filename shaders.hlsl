@@ -32,19 +32,12 @@ float4 ps_main(PSInput input) : SV_TARGET
 {
     float3 N = normalize(input.normal);
 
-    // 두 방향광: L1은 우상단, L2는 전방+살짝 위 — 4개 벽면 방향이 모두 다른 밝기를 가짐
-    float3 L1 = normalize(float3(1.0, 0.8,  0.0));
-    float3 L2 = normalize(float3(0.0, 0.3,  1.0));
-    float lighting = 0.10
-        + max(dot(N, L1), 0.0) * 0.65
-        + max(dot(N, L2), 0.0) * 0.45;
+    float3 L = normalize(float3(1.0, 1.0, -1.0));
+    float ambient = 0.2;
+    float diffuse = max(dot(N, L), 0.0) * 0.8;
+    float lighting = ambient + diffuse;
 
     float3 litColor = input.color.rgb * saturate(lighting);
 
-    // 지수 안개 — 가까운 벽은 밝고 먼 벽은 어두워져 원근감 강화
-    float viewDist  = 1.0 / input.position.w;
-    float3 fogColor = float3(0.01, 0.01, 0.02);
-    float3 finalColor = lerp(fogColor, litColor, saturate(exp(-viewDist * 0.06)));
-
-    return float4(finalColor, input.color.a);
+    return float4(litColor, input.color.a);
 }

@@ -180,6 +180,9 @@
     <ClCompile Include="Item_HP.cpp">
       <Filter>DropItem</Filter>
     </ClCompile>
+    <ClCompile Include="Item.cpp">
+      <Filter>DropItem</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Input.h">
@@ -306,6 +309,9 @@
       <Filter>DropItem</Filter>
     </ClInclude>
     <ClInclude Include="Item_SPEED.h">
+      <Filter>DropItem</Filter>
+    </ClInclude>
+    <ClInclude Include="Item.h">
       <Filter>DropItem</Filter>
     </ClInclude>
   </ItemGroup>

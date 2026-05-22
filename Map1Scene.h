@@ -32,6 +32,7 @@ private:
 	static constexpr int kBulletPoolSize = 10;
 	void FireBullet();
 	void CheckBulletEnemyCollision();
+	void CheckEnemyPlayerCollision();
 
 	// Flow field (BFS from player, 각 셀 = 플레이어까지 거리)
 	static constexpr int   kMazeSize    = 51;
