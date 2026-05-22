@@ -2,7 +2,9 @@
 #include "Camera.h"
 #include "stdafx.h"
 #include "framework.h"
-#include "Gizumo.h"
+#include "SceneManager.h"
+#include "PickingUtils.h"
+
 TitleScene::TitleScene()
 {
 }
@@ -29,10 +31,6 @@ void TitleScene::Initialize()
 	mName->Initialize(Framework::GetDevice(), "SM_NAME.obj");
 	mName->SetPosition(0, -5.0f, 0);
 
-	Gizumo* gizumo = new Gizumo();
-	gizumo->Initialize(Framework::GetDevice());
-	mGameObjects.push_back(gizumo);
-
 	mGameObjects.push_back(mTitleText1);
 	mGameObjects.push_back(mTitleText2);
 	mGameObjects.push_back(mName);
@@ -40,6 +38,16 @@ void TitleScene::Initialize()
 
 void TitleScene::Update(float dt)
 {
+	float rotSpeed = 1.0f;
+	mTitleText1->SetRotation({ mTitleText1->GetRotation().x, mTitleText1->GetRotation().y + rotSpeed * dt, mTitleText1->GetRotation().z });
+	mTitleText2->SetRotation({ mTitleText2->GetRotation().x, mTitleText2->GetRotation().y + rotSpeed * dt, mTitleText2->GetRotation().z });
+
+	if (Input::GetKeyDown(eKeyCode::LButton))
+	{
+		if (PickAABB(mName->GetWorldAABB()))
+			SceneManager::LoadScene(L"MenuScene");
+	}
+
 	for(auto obj : mGameObjects)
 	{
 		obj->Update(dt);

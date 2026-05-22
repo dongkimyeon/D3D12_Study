@@ -159,6 +159,7 @@
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="LetterObj.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MenuScene.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Scene.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="LetterObj.h" />
     <ClInclude Include="LoadScene.h" />
+    <ClInclude Include="MenuScene.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Scene.h" />
@@ -206,6 +208,7 @@
     <ClInclude Include="Level_1_Scene.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />
+    <ClInclude Include="PickingUtils.h" />
     <ClInclude Include="utiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

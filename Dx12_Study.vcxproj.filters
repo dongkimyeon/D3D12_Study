@@ -138,6 +138,9 @@
     <ClCompile Include="TitleScene.cpp">
       <Filter>Scene\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="MenuScene.cpp">
+      <Filter>Scene\Scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Input.h">
@@ -231,6 +234,9 @@
       <Filter>GameObject</Filter>
     </ClInclude>
     <ClInclude Include="TitleScene.h">
+      <Filter>Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="MenuScene.h">
       <Filter>Scene\Scenes</Filter>
     </ClInclude>
   </ItemGroup>

@@ -39,6 +39,9 @@ DirectX::BoundingBox LetterObj::GetWorldAABB() const
 void LetterObj::Update(float dt)
 {
 	GameObject::Update(dt);
+
+
+	
 }
 
 void LetterObj::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)

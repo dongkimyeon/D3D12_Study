@@ -21,6 +21,7 @@ public:
 
     // 씬 등 외부에서 사용할 Device 정적 접근자 (DX12의 핵심 객체)
     static ComPtr<ID3D12Device> GetDevice() { return mDevice; }
+    static HWND GetHwnd() { return mHwnd; }
 
 private:
     // 초기화 단계별 세부 함수
@@ -42,7 +43,7 @@ private:
     int mWindowWidth;
     int mWindowHeight;
     bool isRunning = false;
-    HWND mHwnd;
+    static HWND mHwnd;
 	BOOL isFullScreen = false;
 	bool mIsResizing = false;  
     // DX12 핵심 객체들

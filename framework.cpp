@@ -2,11 +2,13 @@
 #include "Framework.h"
 #include "SceneManager.h"
 #include "LoadScene.h"
+#include "GameObject.h"
 
 #define DEBUG
 
 // DirectX 12 장치(Device)는 어플리케이션 전체에서 공유되므로 정적 멤버로 관리합니다.
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
+HWND Framework::mHwnd = nullptr;
 
 Framework::Framework(int width, int height)
 	: mWindowWidth(width), mWindowHeight(height)
@@ -122,6 +124,10 @@ void Framework::Update()
 	ImGui::NewFrame();
 
 	SceneManager::Update();
+
+	// F1 입력 시 AABB 표시 토글
+	if (Input::GetKeyDown(eKeyCode::F1))
+		GameObject::sShowAABB = !GameObject::sShowAABB;
 
 	// F9 입력 시 전체화면 전환 토글
 	if (Input::GetKeyDown(eKeyCode::F9))
