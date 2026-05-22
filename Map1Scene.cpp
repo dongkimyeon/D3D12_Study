@@ -6,6 +6,7 @@
 #include "Camera.h"
 #include "Player.h"
 #include "Bullet.h"
+#include "Crosshair.h"
 
 extern bool debugMode;
 
@@ -128,6 +129,9 @@ void Map1Scene::Initialize()
 	mGun->AttachTo(mPlayer);
 	mGameObjects.push_back(mGun);
 
+	mCrosshair = new Crosshair();
+	mCrosshair->Initialize(Framework::GetDevice());
+
 	UpdateFlowField();
 	for (auto* e : mEnemies) {
 		e->SetTarget(mPlayer->GetPositionPtr());
@@ -143,6 +147,7 @@ void Map1Scene::Initialize()
 		mBullets.push_back(b);
 	}
 
+	ShowCursor(FALSE);
 }
 
 void Map1Scene::UpdateFlowField()
@@ -240,11 +245,18 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
 
 	for (const auto& obj : mGameObjects)
+	{
+		Player* playerPtr = dynamic_cast<Player*>(obj);
+		if(playerPtr && Camera::sMode == eCameraMode::FirstPerson)
+			continue; // 1인칭 모드에서는 플레이어 모델 렌더링 안 함
 		obj->Render(commandList, view, proj);
 
+	}
+		
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
+	mCrosshair->Render(commandList, view, proj);
 }
 
 void Map1Scene::Release()
@@ -257,6 +269,9 @@ void Map1Scene::Release()
 	mCubeAABBs.clear();
 	for (auto* b : mBullets) delete b;
 	mBullets.clear();
+	delete mCrosshair;
+	mCrosshair = nullptr;
 	Cube::UnloadSharedMesh();
 	Enemy::UnloadSharedMesh();
+	ShowCursor(TRUE);
 }

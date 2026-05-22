@@ -6,6 +6,7 @@
 #include "Gun.h"
 #include "Enemy.h"
 #include "Bullet.h"
+#include "Crosshair.h"
 
 class Map1Scene : public Scene
 {
@@ -22,8 +23,9 @@ private:
 	std::vector<GameObject*> mGameObjects;
 	std::vector<Cube*>       mWallCubes;
 	std::vector<Enemy*>      mEnemies;
-	Player* mPlayer;
-	Gun*    mGun;
+	Player*     mPlayer;
+	Gun*        mGun;
+	Crosshair*  mCrosshair = nullptr;
 
 	// 큐브 AABB 캐시 (큐브는 이동하지 않으므로 초기화 시 1회 생성)
 	std::vector<DirectX::BoundingBox> mCubeAABBs;

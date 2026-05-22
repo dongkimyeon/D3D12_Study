@@ -10,6 +10,7 @@
 #include "Item_ATK.h"
 #include "Item_HP.h"
 #include "Item_SPEED.h"
+#include "Crosshair.h"
 
 class Map2Scene : public Scene
 {
@@ -26,8 +27,9 @@ private:
 	std::vector<GameObject*> mGameObjects;
 	std::vector<Cube*>       mWallCubes;
 	std::vector<Enemy*>      mEnemies;
-	Player* mPlayer;
-	Gun*    mGun;
+	Player*     mPlayer;
+	Gun*        mGun;
+	Crosshair*  mCrosshair = nullptr;
 
 	std::vector<DirectX::BoundingBox> mCubeAABBs;
 

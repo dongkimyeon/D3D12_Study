@@ -28,7 +28,10 @@ void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerPitch ,float player
 	camUp = { 0, 1, 0 };
 
 	if (sMode == eCameraMode::FirstPerson) {
+		//바라보는 방향 살짝 앞쪽으로 이동
+		
 		camPos = { playerPos.x, playerPos.y, playerPos.z };
+		
 	} else {
 		// 3인칭: 플레이어 뒤 6, 위 3
 		XMVECTOR target   = XMLoadFloat3(&playerPos);

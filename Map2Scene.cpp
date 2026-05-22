@@ -6,6 +6,7 @@
 #include "Camera.h"
 #include "Player.h"
 #include "Bullet.h"
+#include "Crosshair.h"
 #include "Item_ATK.h"
 #include "Item_HP.h"
 #include "Item_SPEED.h"
@@ -154,6 +155,9 @@ void Map2Scene::Initialize()
 	mGun->AttachTo(mPlayer);
 	mGameObjects.push_back(mGun);
 
+	mCrosshair = new Crosshair();
+	mCrosshair->Initialize(Framework::GetDevice());
+
 	UpdateFlowField();
 	for (auto* e : mEnemies) {
 		e->SetTarget(mPlayer->GetPositionPtr());
@@ -170,6 +174,7 @@ void Map2Scene::Initialize()
 	}
 
 	SpawnItems();
+	ShowCursor(FALSE);
 }
 
 void Map2Scene::SpawnItems()
@@ -323,6 +328,7 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		if (item->IsActive())
 			item->Render(commandList, view, proj);
 
+	mCrosshair->Render(commandList, view, proj);
 }
 
 void Map2Scene::Release()
@@ -337,9 +343,12 @@ void Map2Scene::Release()
 	mBullets.clear();
 	for (auto* item : mItems) delete item;
 	mItems.clear();
+	delete mCrosshair;
+	mCrosshair = nullptr;
 	Cube::UnloadSharedMesh();
 	Enemy::UnloadSharedMesh();
 	Item_ATK::UnloadSharedMesh();
 	Item_HP::UnloadSharedMesh();
 	Item_SPEED::UnloadSharedMesh();
+	ShowCursor(TRUE);
 }
