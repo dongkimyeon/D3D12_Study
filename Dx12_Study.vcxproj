@@ -157,6 +157,7 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="LetterObj.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
     <ClCompile Include="Plane.cpp" />
@@ -164,6 +165,7 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Level_1_Scene.cpp" />
     <ClCompile Include="Time.cpp" />
+    <ClCompile Include="TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders.hlsl">
@@ -194,6 +196,7 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="LetterObj.h" />
     <ClInclude Include="LoadScene.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="Plane.h" />
@@ -202,6 +205,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Level_1_Scene.h" />
     <ClInclude Include="Time.h" />
+    <ClInclude Include="TitleScene.h" />
     <ClInclude Include="utiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
