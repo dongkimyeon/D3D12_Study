@@ -328,7 +328,8 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		if (item->IsActive())
 			item->Render(commandList, view, proj);
 
-	mCrosshair->Render(commandList, view, proj);
+	if (Camera::sMode == eCameraMode::FirstPerson)
+		mCrosshair->Render(commandList, view, proj);
 }
 
 void Map2Scene::Release()

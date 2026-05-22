@@ -59,7 +59,6 @@ void Player::Update(float dt)
 
 		// --- WASD 수평 속도 ---
 		float speed = mMoveSpeed;
-		if (Input::GetKey(eKeyCode::SHIFT)) speed *= 2.0f;
 
 		XMMATRIX rotM = XMMatrixRotationY(mYaw);
 		XMFLOAT3 fwdF, rgtF;

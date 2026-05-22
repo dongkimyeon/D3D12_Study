@@ -249,6 +249,7 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		Player* playerPtr = dynamic_cast<Player*>(obj);
 		if(playerPtr && Camera::sMode == eCameraMode::FirstPerson)
 			continue; // 1인칭 모드에서는 플레이어 모델 렌더링 안 함
+	
 		obj->Render(commandList, view, proj);
 
 	}
@@ -256,7 +257,8 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
-	mCrosshair->Render(commandList, view, proj);
+	if (Camera::sMode == eCameraMode::FirstPerson)
+		mCrosshair->Render(commandList, view, proj);
 }
 
 void Map1Scene::Release()
