@@ -2,6 +2,7 @@
 #include "Camera.h"
 #include "stdafx.h"
 #include "framework.h"
+#include "Gizumo.h"
 TitleScene::TitleScene()
 {
 }
@@ -12,6 +13,11 @@ TitleScene::~TitleScene()
 
 void TitleScene::Initialize()
 {
+
+	Camera::camPitch = 0.0f;
+	Camera::SetPosition(0, 0, -30.0f);
+
+
 	mTitleText1 = new LetterObj();
 	mTitleText1->Initialize(Framework::GetDevice(), "SM_Title1.obj");
 	mTitleText1->SetPosition(0, 5.0f, 0);	
@@ -22,6 +28,10 @@ void TitleScene::Initialize()
 	mName = new LetterObj();
 	mName->Initialize(Framework::GetDevice(), "SM_NAME.obj");
 	mName->SetPosition(0, -5.0f, 0);
+
+	Gizumo* gizumo = new Gizumo();
+	gizumo->Initialize(Framework::GetDevice());
+	mGameObjects.push_back(gizumo);
 
 	mGameObjects.push_back(mTitleText1);
 	mGameObjects.push_back(mTitleText2);

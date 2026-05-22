@@ -14,7 +14,7 @@ void LetterObj::Initialize(ComPtr<ID3D12Device> device, const std::string& text)
 
 	LoadFromOBJ(text, device);
 	BakeScale(0.05f, 0.05f, 0.05f); // OBJ 파일이 너무 크므로 스케일 다운
-	
+	BakeRotation(0.0f, 90.0f, 0.0f);
 	XMFLOAT3 vmin = { FLT_MAX,  FLT_MAX,  FLT_MAX };
 	XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 	for (const auto& v : vertices)
