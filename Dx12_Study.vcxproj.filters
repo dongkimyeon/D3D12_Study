@@ -93,7 +93,7 @@
     <ClCompile Include="GameObject.cpp">
       <Filter>GameObject</Filter>
     </ClCompile>
-    <ClCompile Include="TestScene.cpp">
+    <ClCompile Include="Level_1_Scene.cpp">
       <Filter>Scene\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="Entity.cpp">
@@ -127,6 +127,9 @@
       <Filter>GameObject\Helicopter</Filter>
     </ClCompile>
     <ClCompile Include="HeliTale.cpp">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClCompile>
+    <ClCompile Include="Helicopter.cpp">
       <Filter>GameObject\Helicopter</Filter>
     </ClCompile>
   </ItemGroup>
@@ -173,7 +176,7 @@
     <ClInclude Include="GameObject.h">
       <Filter>GameObject</Filter>
     </ClInclude>
-    <ClInclude Include="TestScene.h">
+    <ClInclude Include="Level_1_Scene.h">
       <Filter>Scene\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="Entity.h">
@@ -213,6 +216,9 @@
       <Filter>GameObject\Helicopter</Filter>
     </ClInclude>
     <ClInclude Include="HeliTale.h">
+      <Filter>GameObject\Helicopter</Filter>
+    </ClInclude>
+    <ClInclude Include="Helicopter.h">
       <Filter>GameObject\Helicopter</Filter>
     </ClInclude>
   </ItemGroup>

@@ -22,6 +22,7 @@ Scene* SceneManager::LoadScene(const std::wstring& name)
 	if (iter != mScenes.end())
 	{
 		mActiveScene = iter->second;
+		iter->second->Initialize();
 		return mActiveScene;
 	}
 
