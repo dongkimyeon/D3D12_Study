@@ -18,6 +18,7 @@ public:
 
     XMFLOAT3 GetPosition() const;
     XMFLOAT3 GetRotation() const;
+    float     GetHeading() const { return mHeading; }
     void SetPosition(XMFLOAT3 pos);
     void SetPosition(float x, float y, float z);
     void SetRotation(XMFLOAT3 rot);
@@ -30,4 +31,12 @@ private:
 
     float mBladeAngle = 0.0f;
     float mTailAngle  = 0.0f;
+
+    float mHeading      = 0.0f;
+    float mTiltPitch    = 0.0f;
+    float mTiltRoll     = 0.0f;
+    float mMoveSpeed    = 8.0f;
+    float mMouseSensitivity = 0.003f;
+    POINT mPrevMousePos = {};
+    bool  mFirstMouse   = true;
 };
