@@ -8,12 +8,13 @@ LetterObj::~LetterObj()
 {
 }
 
-void LetterObj::Initialize(ComPtr<ID3D12Device> device)
+void LetterObj::Initialize(ComPtr<ID3D12Device> device, const std::string& text)
 {
 	GameObject::Initialize(device);
-	LoadFromOBJ("START.obj", device);
 
-	// 버텍스로부터 로컬 공간 AABB 계산
+	LoadFromOBJ(text, device);
+	BakeScale(0.05f, 0.05f, 0.05f); // OBJ 파일이 너무 크므로 스케일 다운
+	
 	XMFLOAT3 vmin = { FLT_MAX,  FLT_MAX,  FLT_MAX };
 	XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 	for (const auto& v : vertices)
@@ -24,6 +25,7 @@ void LetterObj::Initialize(ComPtr<ID3D12Device> device)
 	}
 	XMFLOAT3 center = { (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f };
 	XMFLOAT3 extents = { (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f };
+
 	mLocalAABB = DirectX::BoundingBox(center, extents);
 }
 

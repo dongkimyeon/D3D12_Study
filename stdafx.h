@@ -29,7 +29,7 @@
 
 #include "OBJLoader.h"
 #include <DirectXMath.h>  // 행렬 연산용
-
+#include <DirectXCollision.h>
 
 #include "imgui.h"
 #include "backends/imgui_impl_dx12.h"   

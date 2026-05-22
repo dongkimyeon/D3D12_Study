@@ -1,7 +1,8 @@
 #include "stdafx.h"
+#include "framework.h"
 #include "Level_1_Scene.h"
 #include "Gizumo.h"
-#include "framework.h"
+
 #include "Camera.h"
 
 Level_1_Scene::Level_1_Scene()

@@ -132,6 +132,12 @@
     <ClCompile Include="Helicopter.cpp">
       <Filter>GameObject\Helicopter</Filter>
     </ClCompile>
+    <ClCompile Include="LetterObj.cpp">
+      <Filter>GameObject</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleScene.cpp">
+      <Filter>Scene\Scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Input.h">
@@ -220,6 +226,12 @@
     </ClInclude>
     <ClInclude Include="Helicopter.h">
       <Filter>GameObject\Helicopter</Filter>
+    </ClInclude>
+    <ClInclude Include="LetterObj.h">
+      <Filter>GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleScene.h">
+      <Filter>Scene\Scenes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,7 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "GameObject.h"
-
+#include "LetterObj.h"
 class TitleScene : public Scene
 {
 public:
@@ -14,6 +14,9 @@ public:
 	virtual void Release() override;
 
 private:
-	std::vector<GameObject*> mGameObjects;
+	std::vector<GameObject*> mGameObjects;	
+	LetterObj* mTitleText1;
+	LetterObj* mTitleText2;
+	LetterObj* mName;
 };
 
