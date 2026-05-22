@@ -147,11 +147,7 @@
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Framework.cpp" />
     <ClCompile Include="GameObject.cpp" />
-    <ClCompile Include="Gizumo.cpp" />
     <ClCompile Include="Gun.cpp" />
-    <ClCompile Include="HeliBlade.cpp" />
-    <ClCompile Include="HeliBody.cpp" />
-    <ClCompile Include="HeliTale.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -170,7 +166,6 @@
     <ClCompile Include="Map2.cpp" />
     <ClCompile Include="MapSelectScene.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
-    <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
@@ -198,11 +193,7 @@
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Framework.h" />
     <ClInclude Include="GameObject.h" />
-    <ClInclude Include="Gizumo.h" />
     <ClInclude Include="Gun.h" />
-    <ClInclude Include="HeliBlade.h" />
-    <ClInclude Include="HeliBody.h" />
-    <ClInclude Include="HeliTale.h" />
     <ClInclude Include="imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="imgui\imconfig.h" />
@@ -222,7 +213,6 @@
     <ClInclude Include="Map2.h" />
     <ClInclude Include="MapSelectScene.h" />
     <ClInclude Include="OBJLoader.h" />
-    <ClInclude Include="Plane.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneManager.h" />
@@ -232,7 +222,6 @@
     <ClInclude Include="Time.h" />
     <ClInclude Include="Title.h" />
     <ClInclude Include="TitleScene.h" />
-    <ClInclude Include="utiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

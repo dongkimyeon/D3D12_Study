@@ -37,9 +37,6 @@
     <Filter Include="GameObject\Cube">
       <UniqueIdentifier>{18bd4bd9-21c1-4528-82b7-905d64b496d1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="GameObject\Gizumo">
-      <UniqueIdentifier>{c39651e8-23f2-4cf6-bc3d-07dce122cc31}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Camera">
       <UniqueIdentifier>{7f9d38df-72b5-4c15-b4e0-89afa3df2c3a}</UniqueIdentifier>
     </Filter>
@@ -48,12 +45,6 @@
     </Filter>
     <Filter Include="GameObject\ObjLoader">
       <UniqueIdentifier>{1535d0d0-03f2-4e7b-b384-b63e8c1c1451}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="GameObject\Plane">
-      <UniqueIdentifier>{09dca376-50e3-4b4e-bd9f-97749b180874}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="GameObject\Helicopter">
-      <UniqueIdentifier>{cbc1ddd3-b7a4-4dc2-90a1-17c4a6d4e434}</UniqueIdentifier>
     </Filter>
     <Filter Include="GameObject\TitleSceneObject">
       <UniqueIdentifier>{e1bdd5e9-03aa-4bf9-865f-f02dafc968d3}</UniqueIdentifier>
@@ -114,9 +105,6 @@
     <ClCompile Include="Cube.cpp">
       <Filter>GameObject\Cube</Filter>
     </ClCompile>
-    <ClCompile Include="Gizumo.cpp">
-      <Filter>GameObject\Gizumo</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Camera</Filter>
     </ClCompile>
@@ -125,18 +113,6 @@
     </ClCompile>
     <ClCompile Include="OBJLoader.cpp">
       <Filter>GameObject\ObjLoader</Filter>
-    </ClCompile>
-    <ClCompile Include="Plane.cpp">
-      <Filter>GameObject\Plane</Filter>
-    </ClCompile>
-    <ClCompile Include="HeliBlade.cpp">
-      <Filter>GameObject\Helicopter</Filter>
-    </ClCompile>
-    <ClCompile Include="HeliBody.cpp">
-      <Filter>GameObject\Helicopter</Filter>
-    </ClCompile>
-    <ClCompile Include="HeliTale.cpp">
-      <Filter>GameObject\Helicopter</Filter>
     </ClCompile>
     <ClCompile Include="TitleScene.cpp">
       <Filter>Scene\Scenes</Filter>
@@ -182,6 +158,9 @@
     </ClCompile>
     <ClCompile Include="Item.cpp">
       <Filter>DropItem</Filter>
+    </ClCompile>
+    <ClCompile Include="Crosshair.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -242,9 +221,6 @@
     <ClInclude Include="Cube.h">
       <Filter>GameObject\Cube</Filter>
     </ClInclude>
-    <ClInclude Include="Gizumo.h">
-      <Filter>GameObject\Gizumo</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Camera</Filter>
     </ClInclude>
@@ -253,21 +229,6 @@
     </ClInclude>
     <ClInclude Include="OBJLoader.h">
       <Filter>GameObject\ObjLoader</Filter>
-    </ClInclude>
-    <ClInclude Include="Plane.h">
-      <Filter>GameObject\Plane</Filter>
-    </ClInclude>
-    <ClInclude Include="utiles.h">
-      <Filter>Helpers</Filter>
-    </ClInclude>
-    <ClInclude Include="HeliBlade.h">
-      <Filter>GameObject\Helicopter</Filter>
-    </ClInclude>
-    <ClInclude Include="HeliBody.h">
-      <Filter>GameObject\Helicopter</Filter>
-    </ClInclude>
-    <ClInclude Include="HeliTale.h">
-      <Filter>GameObject\Helicopter</Filter>
     </ClInclude>
     <ClInclude Include="TitleScene.h">
       <Filter>Scene\Scenes</Filter>
@@ -313,6 +274,9 @@
     </ClInclude>
     <ClInclude Include="Item.h">
       <Filter>DropItem</Filter>
+    </ClInclude>
+    <ClInclude Include="Crosshair.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
