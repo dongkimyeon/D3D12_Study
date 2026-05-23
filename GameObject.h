@@ -13,6 +13,7 @@ public:
 	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
 
 	void LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> device);
+	void CreateInstanceBuffer(ComPtr<ID3D12Device> device, UINT count);
 
 	/*-------------------------GETTER--------------------------*/
 	XMFLOAT4X4 GetWorldMatrix() const { return worldMatrix; }
@@ -71,7 +72,7 @@ protected:
 	XMFLOAT4X4 worldMatrix;
 protected:
 	std::vector<OBJVertex> vertices;
-	std::vector<uint16_t> indices;
+	std::vector<uint32_t> indices;
 
 
 
@@ -107,10 +108,20 @@ protected:
 	bool mIBDirty = false;
 	bool mNormalsDirty = false;
 
+	// 인스턴스 버퍼 (slot 1)
+	ComPtr<ID3D12Resource>   mInstanceBuffer;
+	ComPtr<ID3D12Resource>   mInstanceBufferUpload;
+	D3D12_VERTEX_BUFFER_VIEW mInstanceBufView = {};
+	D3D12_RESOURCE_STATES    mInstState = D3D12_RESOURCE_STATE_COPY_DEST;
+	bool                     mInstDirty = false;
+	UINT                     mInstanceCount = 1;
+
 	// AABB 단위 박스 와이어프레임 (모든 인스턴스 공유)
 	static void EnsureAABBMesh();
 	static ComPtr<ID3D12Resource>   sAABBVB;
 	static ComPtr<ID3D12Resource>   sAABBIB;
+	static ComPtr<ID3D12Resource>   sAABBInstBuf;
 	static D3D12_VERTEX_BUFFER_VIEW sAABBVbView;
 	static D3D12_INDEX_BUFFER_VIEW  sAABBIbView;
+	static D3D12_VERTEX_BUFFER_VIEW sAABBInstView;
 };

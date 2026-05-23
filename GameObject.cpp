@@ -5,8 +5,10 @@
 bool                     GameObject::sShowAABB = false;
 ComPtr<ID3D12Resource>   GameObject::sAABBVB;
 ComPtr<ID3D12Resource>   GameObject::sAABBIB;
+ComPtr<ID3D12Resource>   GameObject::sAABBInstBuf;
 D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBVbView = {};
 D3D12_INDEX_BUFFER_VIEW  GameObject::sAABBIbView = {};
+D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBInstView = {};
 
 GameObject::GameObject()
 {
@@ -29,7 +31,29 @@ GameObject::~GameObject()
 
 void GameObject::Initialize(ComPtr<ID3D12Device> device)
 {
-	// 추가적인 초기화가 필요하면 작성
+	CreateInstanceBuffer(device, 1);
+}
+
+void GameObject::CreateInstanceBuffer(ComPtr<ID3D12Device> device, UINT count)
+{
+	D3D12_HEAP_PROPERTIES uploadHeap = { D3D12_HEAP_TYPE_UPLOAD };
+	D3D12_HEAP_PROPERTIES defaultHeap = { D3D12_HEAP_TYPE_DEFAULT };
+
+	UINT64 size = (UINT64)count * sizeof(XMFLOAT4X4);
+	D3D12_RESOURCE_DESC desc = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, size, 1, 1, 1,
+		DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+	device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&mInstanceBufferUpload));
+	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&mInstanceBuffer));
+
+	mInstanceBufView.BufferLocation = mInstanceBuffer->GetGPUVirtualAddress();
+	mInstanceBufView.StrideInBytes = sizeof(XMFLOAT4X4);
+	mInstanceBufView.SizeInBytes = (UINT)size;
+	mInstState = D3D12_RESOURCE_STATE_COPY_DEST;
+	mInstDirty = false;
+	mInstanceCount = count;
 }
 
 void GameObject::Update(float dt)
@@ -59,7 +83,7 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 		vertices.size() * sizeof(OBJVertex), mVBDirty);
 	UploadBufferIfDirty(commandList, indexBuffer, indexBufferUpload,
 		mIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,
-		indices.size() * sizeof(uint16_t), mIBDirty);
+		indices.size() * sizeof(uint32_t), mIBDirty);
 	if (normalIndexCount > 0 && mNormalsDirty)
 	{
 		// VB와 IB를 같은 더티 조건으로 함께 업로드
@@ -73,20 +97,27 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 		mNormalsDirty = false;
 	}
 
-	XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
-	XMMATRIX mvp = world * view * proj;
-	XMFLOAT4X4 mvpFloat;
-	XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp));
+	// 단일 인스턴스 오브젝트: 매 프레임 현재 worldMatrix를 인스턴스 버퍼에 반영
+	if (mInstanceCount == 1 && mInstanceBufferUpload)
+	{
+		void* ptr;
+		mInstanceBufferUpload->Map(0, nullptr, &ptr);
+		memcpy(ptr, &worldMatrix, sizeof(XMFLOAT4X4)); // row-major 그대로 저장
+		mInstanceBufferUpload->Unmap(0, nullptr);
+		mInstDirty = true;
+	}
+	UploadBufferIfDirty(commandList, mInstanceBuffer, mInstanceBufferUpload,
+		mInstState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+		mInstanceCount * sizeof(XMFLOAT4X4), mInstDirty);
 
-	// dummyColor slot: white (1,1,1,1) keeps vertex colors unchanged
-	// (Cube::Render overrides this with a per-instance tint color)
-	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-	commandList->SetGraphicsRoot32BitConstants(0, 4, white, 0);
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
+	XMFLOAT4X4 vpFloat;
+	XMStoreFloat4x4(&vpFloat, XMMatrixTranspose(view * proj));
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpFloat.m[0][0], 0);
 
 	commandList->IASetVertexBuffers(0, 1, &vbView);
+	commandList->IASetVertexBuffers(1, 1, &mInstanceBufView);
 	commandList->IASetIndexBuffer(&ibView);
-	commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+	commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), mInstanceCount, 0, 0, 0);
 
 	// ============================================
 	// 법선 벡터 렌더링
@@ -130,7 +161,7 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
 
 	// ---------------------------------
 	// 인덱스 버퍼 생성 (업로드 스테이징 + 디폴트 힙 GPU 버퍼)
-	UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+	UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
 	D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize, 1, 1, 1,
 								 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
 
@@ -145,7 +176,7 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
 	indexBufferUpload->Unmap(0, nullptr);
 
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-	ibView.Format = DXGI_FORMAT_R16_UINT;
+	ibView.Format = DXGI_FORMAT_R32_UINT;
 	ibView.SizeInBytes = ibSize;
 	mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
 	mIBDirty = true;
@@ -170,7 +201,7 @@ void GameObject::CreateBuffersFromData(ComPtr<ID3D12Device> device)
 	mVBState = D3D12_RESOURCE_STATE_COPY_DEST;
 	UpdateVertexBuffer();
 
-	UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+	UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
 	D3D12_RESOURCE_DESC iRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, ibSize, 1, 1, 1,
 								 DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
 	device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &iRes,
@@ -182,7 +213,7 @@ void GameObject::CreateBuffersFromData(ComPtr<ID3D12Device> device)
 	memcpy(iData, indices.data(), ibSize);
 	indexBufferUpload->Unmap(0, nullptr);
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-	ibView.Format = DXGI_FORMAT_R16_UINT;
+	ibView.Format = DXGI_FORMAT_R32_UINT;
 	ibView.SizeInBytes = ibSize;
 	mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
 	mIBDirty = true;
@@ -286,6 +317,16 @@ void GameObject::EnsureAABBMesh()
 	sAABBIbView.BufferLocation = sAABBIB->GetGPUVirtualAddress();
 	sAABBIbView.Format = DXGI_FORMAT_R16_UINT;
 	sAABBIbView.SizeInBytes = ibSize;
+
+	// AABB용 1-인스턴스 버퍼 (업로드 힙, 매 드로우마다 갱신)
+	UINT instSize = sizeof(XMFLOAT4X4);
+	D3D12_RESOURCE_DESC instRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, instSize,
+		1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &instRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sAABBInstBuf));
+	sAABBInstView.BufferLocation = sAABBInstBuf->GetGPUVirtualAddress();
+	sAABBInstView.StrideInBytes = sizeof(XMFLOAT4X4);
+	sAABBInstView.SizeInBytes = instSize;
 }
 
 DirectX::BoundingBox GameObject::GetWorldAABB() const
@@ -315,16 +356,20 @@ void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMA
 
 	XMMATRIX world = XMMatrixScaling(aabb.Extents.x * 2.f, aabb.Extents.y * 2.f, aabb.Extents.z * 2.f)
 		* XMMatrixTranslation(aabb.Center.x, aabb.Center.y, aabb.Center.z);
-	XMMATRIX mvp = world * view * proj;
-	XMFLOAT4X4 mvpT;
-	XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
 
-	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-	commandList->SetGraphicsRoot32BitConstants(0, 4, white, 0);
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0], 4);
+	XMFLOAT4X4 worldData, vpFloat;
+	XMStoreFloat4x4(&worldData, world);
+	XMStoreFloat4x4(&vpFloat, XMMatrixTranspose(view * proj));
 
+	void* ptr;
+	sAABBInstBuf->Map(0, nullptr, &ptr);
+	memcpy(ptr, &worldData, sizeof(XMFLOAT4X4));
+	sAABBInstBuf->Unmap(0, nullptr);
+
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpFloat.m[0][0], 0);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	commandList->IASetVertexBuffers(0, 1, &sAABBVbView);
+	commandList->IASetVertexBuffers(1, 1, &sAABBInstView);
 	commandList->IASetIndexBuffer(&sAABBIbView);
 	commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

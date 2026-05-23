@@ -5,7 +5,7 @@
 
 bool OBJLoader::Load(const std::string& filename,
     std::vector<OBJVertex>& vertices,
-    std::vector<uint16_t>& indices) {
+    std::vector<uint32_t>& indices) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cout << "Failed to open OBJ file: " << filename << std::endl;
@@ -14,7 +14,7 @@ bool OBJLoader::Load(const std::string& filename,
 
     std::vector<float> positions;
     std::vector<float> normals;
-    std::vector<uint16_t> posIndices, normIndices;
+    std::vector<uint32_t> posIndices, normIndices;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -51,9 +51,9 @@ bool OBJLoader::Load(const std::string& filename,
                 std::getline(viss, texIdx, '/');
                 std::getline(viss, normIdx, '/');
 
-                posIndices.push_back(static_cast<uint16_t>(std::stoi(posIdx) - 1));
+                posIndices.push_back(static_cast<uint32_t>(std::stoi(posIdx) - 1));
                 if (!normIdx.empty()) {
-                    normIndices.push_back(static_cast<uint16_t>(std::stoi(normIdx) - 1));
+                    normIndices.push_back(static_cast<uint32_t>(std::stoi(normIdx) - 1));
                 }
             }
         }
@@ -66,13 +66,13 @@ bool OBJLoader::Load(const std::string& filename,
     for (size_t i = 0; i < posIndices.size(); ++i) {
         OBJVertex vertex = {};
 
-        uint16_t posIdx = posIndices[i];
+        uint32_t posIdx = posIndices[i];
         vertex.x = positions[posIdx * 3 + 0];
         vertex.y = positions[posIdx * 3 + 1];
         vertex.z = positions[posIdx * 3 + 2];
 
         if (!normIndices.empty()) {
-            uint16_t normIdx = normIndices[i];
+            uint32_t normIdx = normIndices[i];
             vertex.nx = normals[normIdx * 3 + 0];
             vertex.ny = normals[normIdx * 3 + 1];
             vertex.nz = normals[normIdx * 3 + 2];
@@ -84,7 +84,7 @@ bool OBJLoader::Load(const std::string& filename,
         vertex.a = 1.0f;
 
         vertices.push_back(vertex);
-        indices.push_back(static_cast<uint16_t>(i));
+        indices.push_back(static_cast<uint32_t>(i));
     }
 
 	PrintLog(LogColor::BLUE, "[OBJLoader] Loaded " + std::to_string(vertices.size()) + " vertices, " +
@@ -115,5 +115,30 @@ bool OBJLoader::Load(const std::string& filename,
         }
     }
 
+    return true;
+}
+
+
+bool OBJLoader::LoadBinary(const std::string& binPath,
+    std::vector<OBJVertex>& vertices,
+    std::vector<uint32_t>& indices)
+{
+    FILE* f = nullptr;
+    fopen_s(&f, binPath.c_str(), "rb");
+    if (!f) return false;
+
+    uint32_t vCount, iCount;
+    fread(&vCount, sizeof(uint32_t), 1, f);
+    fread(&iCount, sizeof(uint32_t), 1, f);
+
+    vertices.resize(vCount);
+    indices.resize(iCount);
+
+    fread(vertices.data(), sizeof(OBJVertex), vCount, f);
+    fread(indices.data(),  sizeof(uint32_t),  iCount, f);
+
+    fclose(f);
+    PrintLog(LogColor::BLUE, "[OBJLoader] Loaded binary: " + binPath +
+        " (" + std::to_string(vCount) + " vertices, " + std::to_string(iCount / 3) + " triangles)");
     return true;
 }

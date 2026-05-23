@@ -3,6 +3,7 @@
 #include "Level_1_Scene.h"
 #include "Gizumo.h"
 #include "Camera.h"
+#include "Map.h"
 
 extern bool debugMode;
 
@@ -26,6 +27,12 @@ void Level_1_Scene::Initialize()
 
 	mHelicopter = std::make_unique<Helicopter>();
 	mHelicopter->Initialize(Framework::GetDevice());
+
+	GameObject* map = new Map();
+	map->Initialize(Framework::GetDevice());
+	mGameObjects.push_back(map);
+
+
 }
 
 void Level_1_Scene::Update(float dt)

@@ -11,5 +11,9 @@ class OBJLoader {
 public:
     static bool Load(const std::string& filename,
         std::vector<OBJVertex>& vertices,
-        std::vector<uint16_t>& indices);
+        std::vector<uint32_t>& indices);
+
+    static bool LoadBinary(const std::string& binPath,
+        std::vector<OBJVertex>& vertices,
+        std::vector<uint32_t>& indices);
 };

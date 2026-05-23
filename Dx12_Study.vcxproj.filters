@@ -141,6 +141,9 @@
     <ClCompile Include="MenuScene.cpp">
       <Filter>Scene\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="Map.cpp">
+      <Filter>GameObject</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Input.h">
@@ -238,6 +241,12 @@
     </ClInclude>
     <ClInclude Include="MenuScene.h">
       <Filter>Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="PickingUtils.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Map.h">
+      <Filter>GameObject</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
