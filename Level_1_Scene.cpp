@@ -49,6 +49,9 @@ void Level_1_Scene::Update(float dt)
 	if (Input::GetKeyDown(eKeyCode::ESC))
 		SceneManager::LoadScene(L"MenuScene");
 
+	if (Input::GetKeyDown(eKeyCode::V))
+		mFirstPerson = !mFirstPerson;
+
 	mHelicopter->Update(dt);
 
 	XMFLOAT3 heliPos = mHelicopter->GetPosition();
@@ -140,10 +143,8 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		mMissilePool[i]->Render(commandList, view, proj);
 
 	ImGui::Begin("Settings");
-	ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
-	if (ImGui::RadioButton("3인칭", !mFirstPerson)) mFirstPerson = false;
-	ImGui::SameLine();
-	if (ImGui::RadioButton("1인칭", mFirstPerson))  mFirstPerson = true;
+	ImGui::Text("Camera: %s (V to toggle)", mFirstPerson ? "1인칭" : "3인칭");
+	ImGui::Text("Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 	if (mFirstPerson)
 		ImGui::DragFloat3("FPV Offset", &mFpvOffset.x, 0.01f);
 	ImGui::Separator();

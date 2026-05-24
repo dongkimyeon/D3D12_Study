@@ -34,5 +34,5 @@ private:
     bool mFireFromLeft = true;
 
     bool     mFirstPerson = false;
-    XMFLOAT3 mFpvOffset   = { 0.f, 0.5f, 0.5f };
+    XMFLOAT3 mFpvOffset   = { 0.f, -0.780f, 5.35f };
 };

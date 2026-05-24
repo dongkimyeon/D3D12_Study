@@ -28,8 +28,8 @@ public:
 
     void GetFireData(XMFLOAT3& pos1, XMFLOAT3& pos2, XMFLOAT3& dir) const;
 
-    XMFLOAT3 mMissileOffset1 = { -1.f, 0.f, 2.f };
-    XMFLOAT3 mMissileOffset2 = {  1.f, 0.f, 2.f };
+    XMFLOAT3 mMissileOffset1 = { -2.f, -2.f, 2.f };
+    XMFLOAT3 mMissileOffset2 = {  2.f, -2.f, 2.f };
 
 private:
     std::unique_ptr<HeliBody>  mBody;
