@@ -150,3 +150,17 @@ void Helicopter::SetRotation(float pitch, float yaw, float roll)
 {
     mBody->SetRotation(pitch, yaw, roll);
 }
+
+void Helicopter::GetFireData(XMFLOAT3& pos1, XMFLOAT3& pos2, XMFLOAT3& dir) const
+{
+    XMFLOAT3 bodyPos = mBody->GetPosition();
+    XMMATRIX R = XMMatrixRotationRollPitchYaw(mTiltPitch, mHeading, mTiltRoll);
+
+    XMVECTOR wp1 = XMLoadFloat3(&bodyPos) + XMVector3Transform(XMLoadFloat3(&mMissileOffset1), R);
+    XMVECTOR wp2 = XMLoadFloat3(&bodyPos) + XMVector3Transform(XMLoadFloat3(&mMissileOffset2), R);
+    XMStoreFloat3(&pos1, wp1);
+    XMStoreFloat3(&pos2, wp2);
+
+    XMVECTOR fwd = XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), R));
+    XMStoreFloat3(&dir, fwd);
+}

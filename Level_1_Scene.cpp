@@ -34,6 +34,12 @@ void Level_1_Scene::Initialize()
 	RebuildMapInstances();
 	mGameObjects.push_back(mMap);
 
+	for (int i = 0; i < kMissilePoolSize; i++)
+	{
+		mMissilePool[i] = new Missile();
+		mMissilePool[i]->Initialize(Framework::GetDevice());
+	}
+
 
 
 }
@@ -72,6 +78,27 @@ void Level_1_Scene::Update(float dt)
 
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
+
+	// 미사일 발사
+	if (Input::GetKeyDown(eKeyCode::LButton))
+	{
+		XMFLOAT3 pos1, pos2, dir;
+		mHelicopter->GetFireData(pos1, pos2, dir);
+		XMFLOAT3 spawnPos = mFireFromLeft ? pos1 : pos2;
+		mFireFromLeft = !mFireFromLeft;
+
+		for (int i = 0; i < kMissilePoolSize; i++)
+		{
+			if (mMissilePool[i]->IsDead())
+			{
+				mMissilePool[i]->Spawn(spawnPos, dir);
+				break;
+			}
+		}
+	}
+
+	for (int i = 0; i < kMissilePoolSize; i++)
+		mMissilePool[i]->Update(dt);
 }
 
 void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -97,10 +124,15 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 	mHelicopter->Render(commandList, view, proj);
 
+	for (int i = 0; i < kMissilePoolSize; i++)
+		mMissilePool[i]->Render(commandList, view, proj);
+
 	ImGui::Begin("Settings");
 	ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 	ImGui::Separator();
-
+	ImGui::Text("Missile Offsets");
+	ImGui::DragFloat3("Offset 1", &mHelicopter->mMissileOffset1.x, 0.05f);
+	ImGui::DragFloat3("Offset 2", &mHelicopter->mMissileOffset2.x, 0.05f);
 	ImGui::End();
 }
 
@@ -152,4 +184,10 @@ void Level_1_Scene::Release()
 	mMap = nullptr;
 	mHelicopter.reset();
 	mAllTileMatrices.clear();
+
+	for (int i = 0; i < kMissilePoolSize; i++)
+	{
+		delete mMissilePool[i];
+		mMissilePool[i] = nullptr;
+	}
 }

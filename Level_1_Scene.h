@@ -3,6 +3,7 @@
 #include "GameObject.h"
 #include "Helicopter.h"
 #include "Map.h"
+#include "Missile.h"
 
 class Level_1_Scene : public Scene
 {
@@ -27,4 +28,8 @@ private:
     float mMapSpacingZ = 89.0f * 2.0f;
     std::vector<XMFLOAT4X4> mAllTileMatrices;
     int mVisibleTileCount = 0;
+
+    static constexpr int kMissilePoolSize = 10;
+    Missile* mMissilePool[kMissilePoolSize] = {};
+    bool mFireFromLeft = true;
 };

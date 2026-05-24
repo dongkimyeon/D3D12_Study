@@ -149,6 +149,7 @@
     <ClCompile Include="HeliBody.cpp" />
     <ClCompile Include="HeliTale.cpp" />
     <ClCompile Include="Helicopter.cpp" />
+    <ClCompile Include="Missile.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="HeliBody.h" />
     <ClInclude Include="HeliTale.h" />
     <ClInclude Include="Helicopter.h" />
+    <ClInclude Include="Missile.h" />
     <ClInclude Include="imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="imgui\imconfig.h" />

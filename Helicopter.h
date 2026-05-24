@@ -24,6 +24,11 @@ public:
     void SetRotation(XMFLOAT3 rot);
     void SetRotation(float pitch, float yaw, float roll);
 
+    void GetFireData(XMFLOAT3& pos1, XMFLOAT3& pos2, XMFLOAT3& dir) const;
+
+    XMFLOAT3 mMissileOffset1 = { -1.f, 0.f, 2.f };
+    XMFLOAT3 mMissileOffset2 = {  1.f, 0.f, 2.f };
+
 private:
     std::unique_ptr<HeliBody>  mBody;
     std::unique_ptr<HeliBlade> mBlade;
@@ -35,8 +40,8 @@ private:
     float    mHeading      = 0.0f;
     float    mTiltPitch    = 0.0f;
     float    mTiltRoll     = 0.0f;
-    float    mMoveSpeed    = 30.0f;
-    float    mAcceleration = 5.0f;
+    float    mMoveSpeed    = 50.0f;
+    float    mAcceleration = 2.5f;
     XMFLOAT3 mVelocity     = { 0.f, 0.f, 0.f };
     float mMouseSensitivity = 0.003f;
     POINT mPrevMousePos = {};
