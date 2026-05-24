@@ -87,5 +87,8 @@ void MenuScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void MenuScene::Release()
 {
-
+	for (auto obj : mGameObjects)
+		delete obj;
+	mGameObjects.clear();
+	Tutorial = Level_1 = Level_2 = Level_3 = Start = End = nullptr;
 }

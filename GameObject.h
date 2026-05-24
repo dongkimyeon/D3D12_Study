@@ -41,9 +41,11 @@ public:
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 	void SetAlpha(float alpha);
 
-	// AABB 와이어프레임 디버그
+	// AABB / OBB 와이어프레임 디버그
 	static bool sShowAABB;
-	virtual DirectX::BoundingBox GetWorldAABB() const;
+	virtual DirectX::BoundingBox        GetWorldAABB() const;
+	virtual DirectX::BoundingOrientedBox GetWorldOBB()  const;
+	virtual bool UseOBB() const { return false; }
 	void RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
 
 
@@ -116,12 +118,13 @@ protected:
 	bool                     mInstDirty = false;
 	UINT                     mInstanceCount = 1;
 
-	// AABB 단위 박스 와이어프레임 (모든 인스턴스 공유)
+	// AABB 단위 박스 와이어프레임 (VB/IB는 공유, 인스턴스 버퍼는 오브젝트별)
 	static void EnsureAABBMesh();
 	static ComPtr<ID3D12Resource>   sAABBVB;
 	static ComPtr<ID3D12Resource>   sAABBIB;
-	static ComPtr<ID3D12Resource>   sAABBInstBuf;
 	static D3D12_VERTEX_BUFFER_VIEW sAABBVbView;
 	static D3D12_INDEX_BUFFER_VIEW  sAABBIbView;
-	static D3D12_VERTEX_BUFFER_VIEW sAABBInstView;
+
+	ComPtr<ID3D12Resource>   mAABBInstBuf;
+	D3D12_VERTEX_BUFFER_VIEW mAABBInstView = {};
 };

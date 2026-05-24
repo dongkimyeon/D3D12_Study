@@ -17,6 +17,5 @@ public:
 
 private:
 	DirectX::BoundingBox mLocalAABB;
-
 	std::array<float, 4> color;
 };

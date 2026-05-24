@@ -24,9 +24,11 @@ public:
 	}
 
 	static Scene* LoadScene(const std::wstring& name);
+	static void ApplyPendingScene();
 
 private:
 	static std::map<std::wstring, Scene*> mScenes;
 	static Scene* mActiveScene;
+	static std::wstring mPendingSceneName;
 
 };

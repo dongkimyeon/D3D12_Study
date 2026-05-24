@@ -288,6 +288,7 @@ void Framework::Render()
 	mCommandQueue->ExecuteCommandLists(1, ppCommandLists); // GPU에 명령 전달
 	mSwapChain->Present(0, 0); // 화면 출력
 	WaitForGPU(); // CPU가 GPU의 작업 완료를 기다림 (프레임 동기화)
+	SceneManager::ApplyPendingScene(); // GPU 완료 후 안전하게 씬 전환
 }
 
 void Framework::WaitForGPU()

@@ -39,7 +39,7 @@ void Map::Initialize(ComPtr<ID3D12Device> device)
 
 	CreateBuffersFromData(device);
 
-	BakeScale(0.01f, 0.01f, 0.01f);
+	BakeScale(0.020f, 0.02f, 0.020f);
 }
 
 void Map::AddInstance(XMFLOAT3 position, float yaw)
@@ -51,6 +51,11 @@ void Map::AddInstance(XMFLOAT3 position, float yaw)
 	mInstances.push_back(w);
 }
 
+void Map::ClearInstances()
+{
+	mInstances.clear();
+}
+
 void Map::BuildInstanceBuffer(ComPtr<ID3D12Device> device)
 {
 	if (mInstances.empty()) return;
@@ -60,6 +65,20 @@ void Map::BuildInstanceBuffer(ComPtr<ID3D12Device> device)
 	void* ptr;
 	mInstanceBufferUpload->Map(0, nullptr, &ptr);
 	memcpy(ptr, mInstances.data(), mInstances.size() * sizeof(XMFLOAT4X4));
+	mInstanceBufferUpload->Unmap(0, nullptr);
+	mInstDirty = true;
+}
+
+void Map::UpdateInstancesForCulling(const std::vector<XMFLOAT4X4>& visible)
+{
+	if (!mInstanceBufferUpload) return;
+
+	mInstanceCount = (UINT)visible.size();
+	if (visible.empty()) return;
+
+	void* ptr;
+	mInstanceBufferUpload->Map(0, nullptr, &ptr);
+	memcpy(ptr, visible.data(), visible.size() * sizeof(XMFLOAT4X4));
 	mInstanceBufferUpload->Unmap(0, nullptr);
 	mInstDirty = true;
 }

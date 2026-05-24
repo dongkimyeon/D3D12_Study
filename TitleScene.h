@@ -2,6 +2,8 @@
 #include "Scene.h"
 #include "GameObject.h"
 #include "LetterObj.h"
+#include "Cube.h"
+
 class TitleScene : public Scene
 {
 public:
@@ -14,9 +16,23 @@ public:
 	virtual void Release() override;
 
 private:
-	std::vector<GameObject*> mGameObjects;	
-	LetterObj* mTitleText1;
-	LetterObj* mTitleText2;
-	LetterObj* mName;
+	void SpawnExplosion();
+
+	struct ExplodeCube
+	{
+		Cube*     cube;
+		XMFLOAT3  velocity;
+		XMFLOAT3  angularVel;
+	};
+
+	std::vector<GameObject*>  mGameObjects;
+	LetterObj* mTitleText1 = nullptr;
+	LetterObj* mTitleText2 = nullptr;
+	LetterObj* mName       = nullptr;
+
+	std::vector<ExplodeCube> mExplosionCubes;
+	bool  mExploding     = false;
+	float mExplodeTimer  = 0.f;
+	static constexpr float kExplodeDuration = 0.8f;
 };
 

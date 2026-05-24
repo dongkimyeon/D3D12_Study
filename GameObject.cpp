@@ -5,10 +5,8 @@
 bool                     GameObject::sShowAABB = false;
 ComPtr<ID3D12Resource>   GameObject::sAABBVB;
 ComPtr<ID3D12Resource>   GameObject::sAABBIB;
-ComPtr<ID3D12Resource>   GameObject::sAABBInstBuf;
 D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBVbView = {};
 D3D12_INDEX_BUFFER_VIEW  GameObject::sAABBIbView = {};
-D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBInstView = {};
 
 GameObject::GameObject()
 {
@@ -318,15 +316,6 @@ void GameObject::EnsureAABBMesh()
 	sAABBIbView.Format = DXGI_FORMAT_R16_UINT;
 	sAABBIbView.SizeInBytes = ibSize;
 
-	// AABB용 1-인스턴스 버퍼 (업로드 힙, 매 드로우마다 갱신)
-	UINT instSize = sizeof(XMFLOAT4X4);
-	D3D12_RESOURCE_DESC instRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, instSize,
-		1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &instRes,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sAABBInstBuf));
-	sAABBInstView.BufferLocation = sAABBInstBuf->GetGPUVirtualAddress();
-	sAABBInstView.StrideInBytes = sizeof(XMFLOAT4X4);
-	sAABBInstView.SizeInBytes = instSize;
 }
 
 DirectX::BoundingBox GameObject::GetWorldAABB() const
@@ -347,29 +336,61 @@ DirectX::BoundingBox GameObject::GetWorldAABB() const
 	return world;
 }
 
+DirectX::BoundingOrientedBox GameObject::GetWorldOBB() const
+{
+	DirectX::BoundingBox aabb = GetWorldAABB();
+	DirectX::BoundingOrientedBox obb;
+	DirectX::BoundingOrientedBox::CreateFromBoundingBox(obb, aabb);
+	return obb;
+}
+
 void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
 	EnsureAABBMesh();
 
-	DirectX::BoundingBox aabb = GetWorldAABB();
-	if (aabb.Extents.x == 0 && aabb.Extents.y == 0 && aabb.Extents.z == 0) return;
-
-	XMMATRIX world = XMMatrixScaling(aabb.Extents.x * 2.f, aabb.Extents.y * 2.f, aabb.Extents.z * 2.f)
-		* XMMatrixTranslation(aabb.Center.x, aabb.Center.y, aabb.Center.z);
+	XMMATRIX world;
+	if (UseOBB())
+	{
+		DirectX::BoundingOrientedBox obb = GetWorldOBB();
+		if (obb.Extents.x == 0 && obb.Extents.y == 0 && obb.Extents.z == 0) return;
+		world = XMMatrixScaling(obb.Extents.x * 2.f, obb.Extents.y * 2.f, obb.Extents.z * 2.f)
+			* XMMatrixRotationQuaternion(XMLoadFloat4(&obb.Orientation))
+			* XMMatrixTranslation(obb.Center.x, obb.Center.y, obb.Center.z);
+	}
+	else
+	{
+		DirectX::BoundingBox aabb = GetWorldAABB();
+		if (aabb.Extents.x == 0 && aabb.Extents.y == 0 && aabb.Extents.z == 0) return;
+		world = XMMatrixScaling(aabb.Extents.x * 2.f, aabb.Extents.y * 2.f, aabb.Extents.z * 2.f)
+			* XMMatrixTranslation(aabb.Center.x, aabb.Center.y, aabb.Center.z);
+	}
 
 	XMFLOAT4X4 worldData, vpFloat;
 	XMStoreFloat4x4(&worldData, world);
 	XMStoreFloat4x4(&vpFloat, XMMatrixTranspose(view * proj));
 
+	if (!mAABBInstBuf)
+	{
+		D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+		UINT instSize = sizeof(XMFLOAT4X4);
+		D3D12_RESOURCE_DESC instRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, instSize,
+			1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+		Framework::GetDevice()->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &instRes,
+			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&mAABBInstBuf));
+		mAABBInstView.BufferLocation = mAABBInstBuf->GetGPUVirtualAddress();
+		mAABBInstView.StrideInBytes  = sizeof(XMFLOAT4X4);
+		mAABBInstView.SizeInBytes    = instSize;
+	}
+
 	void* ptr;
-	sAABBInstBuf->Map(0, nullptr, &ptr);
+	mAABBInstBuf->Map(0, nullptr, &ptr);
 	memcpy(ptr, &worldData, sizeof(XMFLOAT4X4));
-	sAABBInstBuf->Unmap(0, nullptr);
+	mAABBInstBuf->Unmap(0, nullptr);
 
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpFloat.m[0][0], 0);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	commandList->IASetVertexBuffers(0, 1, &sAABBVbView);
-	commandList->IASetVertexBuffers(1, 1, &sAABBInstView);
+	commandList->IASetVertexBuffers(1, 1, &mAABBInstView);
 	commandList->IASetIndexBuffer(&sAABBIbView);
 	commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

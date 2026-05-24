@@ -4,6 +4,7 @@
 #include "Gizumo.h"
 #include "Camera.h"
 #include "Map.h"
+#include "SceneManager.h"
 
 extern bool debugMode;
 
@@ -21,22 +22,27 @@ void Level_1_Scene::Initialize()
 
 	Camera::SetPosition(0.f, 5.f, -15.f);
 
-	GameObject* gizumo = new Gizumo();
-	gizumo->Initialize(Framework::GetDevice());
-	mGameObjects.push_back(gizumo);
+	//GameObject* gizumo = new Gizumo();
+	//gizumo->Initialize(Framework::GetDevice());
+	//mGameObjects.push_back(gizumo);
 
 	mHelicopter = std::make_unique<Helicopter>();
 	mHelicopter->Initialize(Framework::GetDevice());
 
-	GameObject* map = new Map();
-	map->Initialize(Framework::GetDevice());
-	mGameObjects.push_back(map);
+	mMap = new Map();
+	mMap->Initialize(Framework::GetDevice());
+	RebuildMapInstances();
+	mGameObjects.push_back(mMap);
+
 
 
 }
 
 void Level_1_Scene::Update(float dt)
 {
+	if (Input::GetKeyDown(eKeyCode::ESC))
+		SceneManager::LoadScene(L"MenuScene");
+
 	mHelicopter->Update(dt);
 
 	// 3인칭 카메라 팔로우
@@ -71,10 +77,23 @@ void Level_1_Scene::Update(float dt)
 void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(0, 1, 0, 0));
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 1000.0f);
+
+	BoundingFrustum frustum(proj);
+	BoundingFrustum worldFrustum;
+	frustum.Transform(worldFrustum, XMMatrixInverse(nullptr, view));
+
+	ApplyFrustumCulling(worldFrustum);
 
 	for (const auto& obj : mGameObjects)
+	{
+		if (obj != mMap)
+		{
+			if (!worldFrustum.Intersects(obj->GetWorldAABB()))
+				continue;
+		}
 		obj->Render(commandList, view, proj);
+	}
 
 	mHelicopter->Render(commandList, view, proj);
 
@@ -82,19 +101,55 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
 	ImGui::Separator();
 
-	ImGui::Text("Helicopter Control");
-	XMFLOAT3 heliPos = mHelicopter->GetPosition();
-	XMFLOAT3 heliRot = mHelicopter->GetRotation();
-	if (ImGui::DragFloat3("Heli Position", &heliPos.x, 0.1f))
-		mHelicopter->SetPosition(heliPos);
-	if (ImGui::DragFloat3("Heli Rotation", &heliRot.x, 0.1f))
-		mHelicopter->SetRotation(heliRot);
-
 	ImGui::End();
+}
+
+void Level_1_Scene::RebuildMapInstances()
+{
+	constexpr int GRID = 5;
+	float offsetX = (GRID - 1) * mMapSpacingX * 0.5f;
+	float offsetZ = (GRID - 1) * mMapSpacingZ * 0.5f;
+
+	mMap->ClearInstances();
+	mAllTileMatrices.clear();
+	for (int z = 0; z < GRID; z++)
+		for (int x = 0; x < GRID; x++)
+		{
+			XMFLOAT3 pos = { x * mMapSpacingX - offsetX, 0.f, z * mMapSpacingZ - offsetZ };
+			mMap->AddInstance(pos);
+
+			XMFLOAT4X4 w;
+			XMStoreFloat4x4(&w, XMMatrixTranslation(pos.x, pos.y, pos.z));
+			mAllTileMatrices.push_back(w);
+		}
+
+	mMap->BuildInstanceBuffer(Framework::GetDevice());
+}
+
+void Level_1_Scene::ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFrustum)
+{
+	float radius = sqrtf(mMapSpacingX * mMapSpacingX + mMapSpacingZ * mMapSpacingZ) * 0.5f;
+
+	std::vector<XMFLOAT4X4> visible;
+	visible.reserve(mAllTileMatrices.size());
+	for (const auto& mat : mAllTileMatrices)
+	{
+		BoundingSphere sphere({ mat._41, mat._42, mat._43 }, radius);
+		if (worldFrustum.Intersects(sphere))
+			visible.push_back(mat);
+	}
+
+	mVisibleTileCount = (int)visible.size();
+	mMap->UpdateInstancesForCulling(visible);
 }
 
 void Level_1_Scene::Release()
 {
 	debugMode = true;
+	for (auto obj : mGameObjects)
+		delete obj;
 	mGameObjects.clear();
+	mMap = nullptr;
+	mHelicopter.reset();
+	mAllTileMatrices.clear();
 }

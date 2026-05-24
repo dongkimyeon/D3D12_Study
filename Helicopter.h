@@ -35,7 +35,7 @@ private:
     float mHeading      = 0.0f;
     float mTiltPitch    = 0.0f;
     float mTiltRoll     = 0.0f;
-    float mMoveSpeed    = 8.0f;
+    float mMoveSpeed    = 20.0f;
     float mMouseSensitivity = 0.003f;
     POINT mPrevMousePos = {};
     bool  mFirstMouse   = true;

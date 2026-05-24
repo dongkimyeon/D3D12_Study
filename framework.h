@@ -24,6 +24,7 @@ public:
     static HWND GetHwnd() { return mHwnd; }
 
 private:
+    void WaitForGPU();                 // GPU가 명령 처리를 마칠 때까지 대기 (동기화)
     // 초기화 단계별 세부 함수
     void InitDirect3D();               // 장치(Device) 및 어댑터 생성
     void CreateCommandQueueAndList();  // 명령 대기열 및 리스트 생성
@@ -35,7 +36,6 @@ private:
     void CompileShaders();             // 셰이더 컴파일 및 파이프라인 상태(PSO) 생성
     void CreateImGuiSrvHeap();         // ImGui용 셰이더 리소스 뷰 힙 생성
 
-    void WaitForGPU();                 // GPU가 명령 처리를 마칠 때까지 대기 (동기화)
     void Update();                     // 매 프레임 로직 업데이트
     void Render();                     // 매 프레임 화면 그리기
 	

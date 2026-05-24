@@ -2,6 +2,7 @@
 #include "Scene.h"
 #include "GameObject.h"
 #include "Helicopter.h"
+#include "Map.h"
 
 class Level_1_Scene : public Scene
 {
@@ -15,6 +16,15 @@ public:
     virtual void Release() override;
 
 private:
+    void RebuildMapInstances();
+    void ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFrustum);
+
     std::vector<GameObject*> mGameObjects;
 	std::unique_ptr<Helicopter> mHelicopter;
+
+    Map* mMap = nullptr;
+    float mMapSpacingX = 69.0f * 2.0f;
+    float mMapSpacingZ = 89.0f * 2.0f;
+    std::vector<XMFLOAT4X4> mAllTileMatrices;
+    int mVisibleTileCount = 0;
 };

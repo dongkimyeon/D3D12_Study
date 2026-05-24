@@ -5,6 +5,7 @@
 
 std::map<std::wstring, Scene*> SceneManager::mScenes;
 Scene* SceneManager::mActiveScene = nullptr;
+std::wstring SceneManager::mPendingSceneName;
 
 
 
@@ -17,16 +18,24 @@ void SceneManager::Initialize()
 
 Scene* SceneManager::LoadScene(const std::wstring& name)
 {
-	auto iter = mScenes.find(name);
-
-	if (iter != mScenes.end())
-	{
-		mActiveScene = iter->second;
-		iter->second->Initialize();
-		return mActiveScene;
-	}
-
+	mPendingSceneName = name;
 	return nullptr;
+}
+
+void SceneManager::ApplyPendingScene()
+{
+	if (mPendingSceneName.empty()) return;
+
+	auto iter = mScenes.find(mPendingSceneName);
+	mPendingSceneName.clear();
+
+	if (iter == mScenes.end()) return;
+
+	if (mActiveScene != nullptr)
+		mActiveScene->Release();
+
+	mActiveScene = iter->second;
+	mActiveScene->Initialize();
 }
 
 void SceneManager::Update()
@@ -37,11 +46,7 @@ void SceneManager::Update()
 		
 		mActiveScene->Update(Time::GetDeltaTime());
 		
-		if (Input::GetKeyDown(eKeyCode::ESC))
-		{
-			Release();
-			exit(0);
-		}
+	
 
 		
 	}
