@@ -18,7 +18,9 @@ public:
 
     XMFLOAT3 GetPosition() const;
     XMFLOAT3 GetRotation() const;
-    float     GetHeading() const { return mHeading; }
+    float     GetHeading()   const { return mHeading; }
+    float     GetTiltPitch() const { return mTiltPitch; }
+    float     GetTiltRoll()  const { return mTiltRoll; }
     void SetPosition(XMFLOAT3 pos);
     void SetPosition(float x, float y, float z);
     void SetRotation(XMFLOAT3 rot);

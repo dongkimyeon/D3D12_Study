@@ -51,30 +51,42 @@ void Level_1_Scene::Update(float dt)
 
 	mHelicopter->Update(dt);
 
-	// 3인칭 카메라 팔로우
 	XMFLOAT3 heliPos = mHelicopter->GetPosition();
 	float heading    = mHelicopter->GetHeading();
 
-	// 헬기 뒤쪽 + 위쪽 오프셋
-	const float camDist   = 15.f;
-	const float camHeight =  5.f;
-	XMFLOAT3 targetCamPos = {
-		heliPos.x - sinf(heading) * camDist,
-		heliPos.y + camHeight,
-		heliPos.z - cosf(heading) * camDist
-	};
+	if (mFirstPerson)
+	{
+		// 1인칭: 헬기 로컬 공간 기준 오프셋 → 월드 공간으로 변환
+		XMMATRIX R = XMMatrixRotationRollPitchYaw(
+			mHelicopter->GetTiltPitch(), heading, mHelicopter->GetTiltRoll());
+		XMVECTOR worldOffset = XMVector3TransformNormal(XMLoadFloat3(&mFpvOffset), R);
+		XMStoreFloat3(&Camera::camPos, XMLoadFloat3(&heliPos) + worldOffset);
 
-	// 부드러운 카메라 추적 (보간)
-	const float camSpeed = 8.f;
-	float t = 1.f - expf(-camSpeed * dt);
-	XMVECTOR camPos    = XMLoadFloat3(&Camera::camPos);
-	XMVECTOR targetPos = XMLoadFloat3(&targetCamPos);
-	XMStoreFloat3(&Camera::camPos, XMVectorLerp(camPos, targetPos, t));
+		XMVECTOR fwd = XMVector3Normalize(
+			XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), R));
+		XMStoreFloat3(&Camera::camForward, fwd);
+	}
+	else
+	{
+		// 3인칭: 헬기 뒤쪽 + 위쪽 팔로우
+		const float camDist   = 15.f;
+		const float camHeight =  5.f;
+		XMFLOAT3 targetCamPos = {
+			heliPos.x - sinf(heading) * camDist,
+			heliPos.y + camHeight,
+			heliPos.z - cosf(heading) * camDist
+		};
 
-	// 헬기 중심 바라보기
-	XMVECTOR lookDir = XMVector3Normalize(
-		XMLoadFloat3(&heliPos) - XMLoadFloat3(&Camera::camPos));
-	XMStoreFloat3(&Camera::camForward, lookDir);
+		const float camSpeed = 8.f;
+		float t = 1.f - expf(-camSpeed * dt);
+		XMVECTOR camPos    = XMLoadFloat3(&Camera::camPos);
+		XMVECTOR targetPos = XMLoadFloat3(&targetCamPos);
+		XMStoreFloat3(&Camera::camPos, XMVectorLerp(camPos, targetPos, t));
+
+		XMVECTOR lookDir = XMVector3Normalize(
+			XMLoadFloat3(&heliPos) - XMLoadFloat3(&Camera::camPos));
+		XMStoreFloat3(&Camera::camForward, lookDir);
+	}
 
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
@@ -129,6 +141,11 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 	ImGui::Begin("Settings");
 	ImGui::Text("Camera Position: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
+	if (ImGui::RadioButton("3인칭", !mFirstPerson)) mFirstPerson = false;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("1인칭", mFirstPerson))  mFirstPerson = true;
+	if (mFirstPerson)
+		ImGui::DragFloat3("FPV Offset", &mFpvOffset.x, 0.01f);
 	ImGui::Separator();
 	ImGui::Text("Missile Offsets");
 	ImGui::DragFloat3("Offset 1", &mHelicopter->mMissileOffset1.x, 0.05f);

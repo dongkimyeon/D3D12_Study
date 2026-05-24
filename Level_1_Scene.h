@@ -32,4 +32,7 @@ private:
     static constexpr int kMissilePoolSize = 10;
     Missile* mMissilePool[kMissilePoolSize] = {};
     bool mFireFromLeft = true;
+
+    bool     mFirstPerson = false;
+    XMFLOAT3 mFpvOffset   = { 0.f, 0.5f, 0.5f };
 };
