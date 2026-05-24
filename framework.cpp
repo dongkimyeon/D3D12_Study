@@ -614,7 +614,7 @@ void Framework::CompileShaders()
 	D3D12_ROOT_PARAMETER rootParam = {};
 	rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 	rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	rootParam.Constants.Num32BitValues = 20; // 20개의 32비트 상수 (행렬 등)
+	rootParam.Constants.Num32BitValues = 16; // viewProj 행렬
 	rootParam.Constants.ShaderRegister = 0;
 
 	D3D12_ROOT_SIGNATURE_DESC sigDesc = { 1, &rootParam, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT };
@@ -632,14 +632,21 @@ void Framework::CompileShaders()
 
 	// [3] 입력 배치(Input Layout) 정의: 정점 데이터 구조 설명
 	D3D12_INPUT_ELEMENT_DESC layout[] = {
-		{ "POS",    0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COL",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		// Slot 0: 버텍스 데이터 (PER_VERTEX)
+		{ "POS",            0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,   0 },
+		{ "NORMAL",         0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,   0 },
+		{ "COL",            0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,   0 },
+		// Slot 1: 인스턴스 데이터 — 월드 행렬 4행 + 색상 (PER_INSTANCE, stride=sizeof(InstanceData))
+		{ "INSTANCE_WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1,  0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "INSTANCE_WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "INSTANCE_WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "INSTANCE_WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
 	};
 
 	// [4] Pipeline State Object (PSO) 생성: 모든 렌더링 상태를 묶은 객체
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { layout, 3 };
+	psoDesc.InputLayout = { layout, 8 };
 	psoDesc.pRootSignature = mRootSignature.Get();
 	psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
 	psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };

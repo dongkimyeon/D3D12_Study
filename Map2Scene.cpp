@@ -143,6 +143,8 @@ void Map2Scene::Initialize()
 		mCubeAABBs.push_back(cube->GetWorldAABB());
 	}
 
+	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
+
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	// 41x41 그리드, offset=40 → row=1,col=1 → 월드(-38, 0, -38)
@@ -174,6 +176,9 @@ void Map2Scene::Initialize()
 	}
 
 	SpawnItems();
+
+	Enemy::BuildInstanceBuffer(Framework::GetDevice(), (UINT)mEnemies.size());
+
 	ShowCursor(FALSE);
 }
 
@@ -318,15 +323,32 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	);
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
 
+	// viewProj를 프레임당 1회 루트 상수로 설정
+	XMFLOAT4X4 vpT;
+	XMStoreFloat4x4(&vpT, XMMatrixTranspose(view * proj));
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpT.m[0][0], 0);
+
+	// 비-배치 오브젝트
 	for (const auto& obj : mGameObjects)
 		obj->Render(commandList, view, proj);
 
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
 
-	for (auto* item : mItems)
-		if (item->IsActive())
-			item->Render(commandList, view, proj);
+	// 배치 렌더 (인스턴싱)
+	Cube::RenderBatch(commandList);
+	Enemy::RenderBatch(commandList, mEnemies);
+
+	// 아이템 타입별 배치 렌더
+	std::vector<Item*> atkItems, hpItems, speedItems;
+	for (auto* item : mItems) {
+		if (dynamic_cast<Item_ATK*>(item))        atkItems.push_back(item);
+		else if (dynamic_cast<Item_HP*>(item))    hpItems.push_back(item);
+		else                                       speedItems.push_back(item);
+	}
+	Item_ATK::RenderBatch(commandList, atkItems);
+	Item_HP::RenderBatch(commandList, hpItems);
+	Item_SPEED::RenderBatch(commandList, speedItems);
 
 	if (Camera::sMode == eCameraMode::FirstPerson)
 		mCrosshair->Render(commandList, view, proj);

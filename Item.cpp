@@ -10,18 +10,23 @@ void Item::Update(float dt)
 void Item::Render(ComPtr<ID3D12GraphicsCommandList>& commandList,
                   XMMATRIX view, XMMATRIX proj)
 {
+    // 메쉬 드로우는 RenderBatch에서 처리 — 여기서는 AABB 디버그만
     if (!mActive) return;
+    if (sShowAABB)
+        RenderAABB(commandList, view, proj);
+}
 
-    ItemMesh& m = GetMesh();
-    if (m.indexCount == 0) return;
+void Item::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                       ItemMesh& m, const std::vector<Item*>& items)
+{
+    if (m.indexCount == 0 || !m.instanceBuffer) return;
 
     auto flush = [&](ComPtr<ID3D12Resource>& gpu, ComPtr<ID3D12Resource>& upload,
         D3D12_RESOURCE_STATES& state, D3D12_RESOURCE_STATES target,
         UINT64 size, bool& dirty)
     {
         if (!dirty) return;
-        if (state != D3D12_RESOURCE_STATE_COPY_DEST)
-        {
+        if (state != D3D12_RESOURCE_STATE_COPY_DEST) {
             D3D12_RESOURCE_BARRIER b = {};
             b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             b.Transition.pResource   = gpu.Get();
@@ -31,39 +36,38 @@ void Item::Render(ComPtr<ID3D12GraphicsCommandList>& commandList,
             commandList->ResourceBarrier(1, &b);
         }
         commandList->CopyBufferRegion(gpu.Get(), 0, upload.Get(), 0, size);
-        {
-            D3D12_RESOURCE_BARRIER b = {};
-            b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            b.Transition.pResource   = gpu.Get();
-            b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            b.Transition.StateAfter  = target;
-            b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            commandList->ResourceBarrier(1, &b);
-        }
-        state = target;
-        dirty = false;
+        D3D12_RESOURCE_BARRIER b = {};
+        b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        b.Transition.pResource   = gpu.Get();
+        b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        b.Transition.StateAfter  = target;
+        b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        commandList->ResourceBarrier(1, &b);
+        state = target; dirty = false;
     };
+    flush(m.vb, m.vbUpload, m.vbState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m.vbView.SizeInBytes, m.vbDirty);
+    flush(m.ib, m.ibUpload, m.ibState, D3D12_RESOURCE_STATE_INDEX_BUFFER,               m.ibView.SizeInBytes, m.ibDirty);
 
-    flush(m.vb, m.vbUpload, m.vbState,
-          D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-          m.vbView.SizeInBytes, m.vbDirty);
-    flush(m.ib, m.ibUpload, m.ibState,
-          D3D12_RESOURCE_STATE_INDEX_BUFFER,
-          m.ibView.SizeInBytes, m.ibDirty);
+    UINT count = 0;
+    void* mapped;
+    m.instanceBuffer->Map(0, nullptr, &mapped);
+    InstanceData* ptr = reinterpret_cast<InstanceData*>(mapped);
+    for (auto* item : items)
+    {
+        if (!item->mActive) continue;
+        if (count >= m.maxInstances) break;
+        ptr[count].world = item->worldMatrix;
+        ptr[count].color = item->mColor;
+        ++count;
+    }
+    m.instanceBuffer->Unmap(0, nullptr);
 
-    XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
-    XMMATRIX mvp   = world * view * proj;
-    XMFLOAT4X4 mvpT;
-    XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
+    if (count == 0) return;
 
-    commandList->SetGraphicsRoot32BitConstants(0, 4,  &mColor,       0);
-    commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0], 4);
     commandList->IASetVertexBuffers(0, 1, &m.vbView);
+    commandList->IASetVertexBuffers(1, 1, &m.instanceView);
     commandList->IASetIndexBuffer(&m.ibView);
-    commandList->DrawIndexedInstanced(m.indexCount, 1, 0, 0, 0);
-
-    if (sShowAABB)
-        RenderAABB(commandList, view, proj);
+    commandList->DrawIndexedInstanced(m.indexCount, count, 0, 0, 0);
 }
 
 DirectX::BoundingBox Item::GetWorldAABB() const
@@ -140,12 +144,24 @@ void Item::LoadMesh(ComPtr<ID3D12Device> device,
     m.ibDirty = true;
 
     m.indexCount = (UINT)inds.size();
+
+    // 인스턴스 버퍼 (최대 100개, 업로드 힙)
+    m.maxInstances = 100;
+    UINT instBufSize = m.maxInstances * sizeof(InstanceData);
+    D3D12_RESOURCE_DESC instRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, instBufSize, 1, 1, 1,
+        DXGI_FORMAT_UNKNOWN, {1,0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &instRes,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m.instanceBuffer));
+    m.instanceView.BufferLocation = m.instanceBuffer->GetGPUVirtualAddress();
+    m.instanceView.SizeInBytes    = instBufSize;
+    m.instanceView.StrideInBytes  = sizeof(InstanceData);
 }
 
 void Item::UnloadMesh(ItemMesh& m)
 {
     m.vb.Reset();  m.vbUpload.Reset();
     m.ib.Reset();  m.ibUpload.Reset();
-    m.indexCount = 0;
+    m.instanceBuffer.Reset();
+    m.indexCount = m.maxInstances = 0;
     m.vbDirty = m.ibDirty = false;
 }

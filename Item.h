@@ -14,6 +14,10 @@ struct ItemMesh
     bool                     vbDirty = false;
     bool                     ibDirty = false;
     DirectX::BoundingBox     localAABB;
+
+    ComPtr<ID3D12Resource>   instanceBuffer;
+    D3D12_VERTEX_BUFFER_VIEW instanceView = {};
+    UINT                     maxInstances = 0;
 };
 
 class Item : public GameObject
@@ -41,4 +45,8 @@ protected:
     static void LoadMesh(ComPtr<ID3D12Device> device,
                          const std::string& filename, ItemMesh& m);
     static void UnloadMesh(ItemMesh& m);
+
+    // 인스턴싱 배치 렌더 (같은 메쉬를 공유하는 아이템 목록 전달)
+    static void RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                             ItemMesh& mesh, const std::vector<Item*>& items);
 };

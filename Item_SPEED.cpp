@@ -24,3 +24,9 @@ void Item_SPEED::OnPickup(Player* player)
     player->AddMoveSpeed(1.0f);
     SetInactive();
 }
+
+void Item_SPEED::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                             const std::vector<Item*>& items)
+{
+    Item::RenderBatch(commandList, sMesh, items);
+}

@@ -13,6 +13,9 @@ D3D12_RESOURCE_STATES    Enemy::sIBState = D3D12_RESOURCE_STATE_COPY_DEST;
 bool                     Enemy::sVBDirty = false;
 bool                     Enemy::sIBDirty = false;
 DirectX::BoundingBox     Enemy::sLocalAABB;
+ComPtr<ID3D12Resource>   Enemy::sInstanceBuffer;
+D3D12_VERTEX_BUFFER_VIEW Enemy::sInstanceView = {};
+UINT                     Enemy::sMaxInstances = 0;
 
 void Enemy::LoadSharedMesh(ComPtr<ID3D12Device> device)
 {
@@ -89,8 +92,79 @@ void Enemy::UnloadSharedMesh()
 {
 	sVB.Reset();  sVBUpload.Reset();
 	sIB.Reset();  sIBUpload.Reset();
-	sIndexCount = 0;
+	sInstanceBuffer.Reset();
+	sIndexCount = sMaxInstances = 0;
 	sVBDirty = sIBDirty = false;
+}
+
+void Enemy::BuildInstanceBuffer(ComPtr<ID3D12Device> device, UINT maxCount)
+{
+	sMaxInstances = maxCount;
+	if (maxCount == 0) return;
+
+	UINT bufSize = maxCount * sizeof(InstanceData);
+	D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+	D3D12_RESOURCE_DESC desc = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, bufSize, 1, 1, 1,
+		DXGI_FORMAT_UNKNOWN, {1,0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sInstanceBuffer));
+	sInstanceView.BufferLocation = sInstanceBuffer->GetGPUVirtualAddress();
+	sInstanceView.SizeInBytes    = bufSize;
+	sInstanceView.StrideInBytes  = sizeof(InstanceData);
+}
+
+void Enemy::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                        const std::vector<Enemy*>& enemies)
+{
+	if (sIndexCount == 0 || !sInstanceBuffer) return;
+
+	// 공유 VB/IB 첫 프레임 GPU 업로드
+	auto flush = [&](ComPtr<ID3D12Resource>& gpu, ComPtr<ID3D12Resource>& staging,
+		D3D12_RESOURCE_STATES& state, D3D12_RESOURCE_STATES target, UINT64 size, bool& dirty)
+	{
+		if (!dirty) return;
+		if (state != D3D12_RESOURCE_STATE_COPY_DEST) {
+			D3D12_RESOURCE_BARRIER b = {};
+			b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			b.Transition.pResource   = gpu.Get();
+			b.Transition.StateBefore = state;
+			b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
+			b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			commandList->ResourceBarrier(1, &b);
+		}
+		commandList->CopyBufferRegion(gpu.Get(), 0, staging.Get(), 0, size);
+		D3D12_RESOURCE_BARRIER b = {};
+		b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		b.Transition.pResource   = gpu.Get();
+		b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		b.Transition.StateAfter  = target;
+		b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		commandList->ResourceBarrier(1, &b);
+		state = target; dirty = false;
+	};
+	flush(sVB, sVBUpload, sVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, sVbView.SizeInBytes, sVBDirty);
+	flush(sIB, sIBUpload, sIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,               sIbView.SizeInBytes, sIBDirty);
+
+	// 살아있는 적 인스턴스 데이터 갱신
+	UINT count = 0;
+	void* mapped;
+	sInstanceBuffer->Map(0, nullptr, &mapped);
+	InstanceData* ptr = reinterpret_cast<InstanceData*>(mapped);
+	for (auto* e : enemies)
+	{
+		if (!e->mAlive) continue;
+		ptr[count].world = e->worldMatrix;
+		ptr[count].color = { 1.f, 1.f, 1.f, 1.f };
+		++count;
+	}
+	sInstanceBuffer->Unmap(0, nullptr);
+
+	if (count == 0) return;
+
+	commandList->IASetVertexBuffers(0, 1, &sVbView);
+	commandList->IASetVertexBuffers(1, 1, &sInstanceView);
+	commandList->IASetIndexBuffer(&sIbView);
+	commandList->DrawIndexedInstanced(sIndexCount, count, 0, 0, 0);
 }
 
 Enemy::Enemy()
@@ -242,49 +316,8 @@ void Enemy::Update(float dt)
 
 void Enemy::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
+	// 메쉬 드로우는 RenderBatch에서 처리 — 여기서는 AABB 디버그만
 	if (!mAlive) return;
-	if (sIndexCount == 0) return;
-
-	auto flush = [&](ComPtr<ID3D12Resource>& gpu, ComPtr<ID3D12Resource>& staging,
-		D3D12_RESOURCE_STATES& state, D3D12_RESOURCE_STATES target,
-		UINT64 size, bool& dirty)
-	{
-		if (!dirty) return;
-		if (state != D3D12_RESOURCE_STATE_COPY_DEST) {
-			D3D12_RESOURCE_BARRIER b = {};
-			b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			b.Transition.pResource   = gpu.Get();
-			b.Transition.StateBefore = state;
-			b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-			b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			commandList->ResourceBarrier(1, &b);
-		}
-		commandList->CopyBufferRegion(gpu.Get(), 0, staging.Get(), 0, size);
-		D3D12_RESOURCE_BARRIER b = {};
-		b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		b.Transition.pResource   = gpu.Get();
-		b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		b.Transition.StateAfter  = target;
-		b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		commandList->ResourceBarrier(1, &b);
-		state = target;
-		dirty = false;
-	};
-
-	flush(sVB, sVBUpload, sVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, sVbView.SizeInBytes, sVBDirty);
-	flush(sIB, sIBUpload, sIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,               sIbView.SizeInBytes, sIBDirty);
-
-	XMMATRIX mvp = XMLoadFloat4x4(&worldMatrix) * view * proj;
-	XMFLOAT4X4 mvpT;
-	XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
-
-	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-	commandList->SetGraphicsRoot32BitConstants(0, 4,  white,             0);
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0],    4);
-	commandList->IASetVertexBuffers(0, 1, &sVbView);
-	commandList->IASetIndexBuffer(&sIbView);
-	commandList->DrawIndexedInstanced(sIndexCount, 1, 0, 0, 0);
-
 	if (sShowAABB)
 		RenderAABB(commandList, view, proj);
 }

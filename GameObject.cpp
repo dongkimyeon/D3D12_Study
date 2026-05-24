@@ -7,6 +7,8 @@ ComPtr<ID3D12Resource>   GameObject::sAABBVB;
 ComPtr<ID3D12Resource>   GameObject::sAABBIB;
 D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBVbView = {};
 D3D12_INDEX_BUFFER_VIEW  GameObject::sAABBIbView = {};
+ComPtr<ID3D12Resource>   GameObject::sAABBInstanceBuffer;
+D3D12_VERTEX_BUFFER_VIEW GameObject::sAABBInstanceView = {};
 
 GameObject::GameObject()
 {
@@ -51,9 +53,8 @@ void GameObject::Update(float dt)
 
 void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
-	if (indices.empty()) return; // 로드된 메쉬가 없다면 그리지 않음
+	if (indices.empty()) return;
 
-	// 업로드 힙 → 디폴트 힙 복사 (더티 플래그가 있을 때만 실행)
 	UploadBufferIfDirty(commandList, vertexBuffer, vertexBufferUpload,
 		mVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 		vertices.size() * sizeof(OBJVertex), mVBDirty);
@@ -62,7 +63,6 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 		indices.size() * sizeof(uint16_t), mIBDirty);
 	if (normalIndexCount > 0 && mNormalsDirty)
 	{
-		// VB와 IB를 같은 더티 조건으로 함께 업로드
 		bool vbDirty = true, ibDirty = true;
 		UploadBufferIfDirty(commandList, normalVertexBuffer, normalVertexBufferUpload,
 			mNVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
@@ -73,23 +73,29 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 		mNormalsDirty = false;
 	}
 
-	XMMATRIX world = XMLoadFloat4x4(&worldMatrix);
-	XMMATRIX mvp =  world * view * proj;
-	XMFLOAT4X4 mvpFloat;
-	XMStoreFloat4x4(&mvpFloat, XMMatrixTranspose(mvp));
+	// viewProj 루트 상수 설정 (매 오브젝트마다 설정 — 씬마다 별도 처리 불필요)
+	XMMATRIX vp = view * proj;
+	XMFLOAT4X4 vpT;
+	XMStoreFloat4x4(&vpT, XMMatrixTranspose(vp));
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpT.m[0][0], 0);
 
-	// dummyColor slot: white (1,1,1,1) keeps vertex colors unchanged
-	// (Cube::Render overrides this with a per-instance tint color)
-	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-	commandList->SetGraphicsRoot32BitConstants(0, 4,  white,             0);
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpFloat.m[0][0], 4);
+	// 인스턴스 버퍼에 현재 월드 행렬 + 흰색 기록
+	if (mInstanceBuffer)
+	{
+		InstanceData id;
+		id.world = worldMatrix;
+		id.color = { 1.f, 1.f, 1.f, 1.f };
+		void* mapped;
+		mInstanceBuffer->Map(0, nullptr, &mapped);
+		memcpy(mapped, &id, sizeof(InstanceData));
+		mInstanceBuffer->Unmap(0, nullptr);
+	}
 
 	commandList->IASetVertexBuffers(0, 1, &vbView);
+	commandList->IASetVertexBuffers(1, 1, &mInstanceBufView);
 	commandList->IASetIndexBuffer(&ibView);
 	commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
 
-	// ============================================
-	// 법선 벡터 렌더링
 	if (normalIndexCount > 0)
 	{
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
@@ -149,6 +155,8 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
     ibView.SizeInBytes = ibSize;
     mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
     mIBDirty = true;
+
+    CreateSingleInstanceBuffer(device);
 }
 
 
@@ -186,6 +194,21 @@ void GameObject::CreateBuffersFromData(ComPtr<ID3D12Device> device)
     ibView.SizeInBytes    = ibSize;
     mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
     mIBDirty  = true;
+
+    CreateSingleInstanceBuffer(device);
+}
+
+void GameObject::CreateSingleInstanceBuffer(ComPtr<ID3D12Device> device)
+{
+    UINT size = sizeof(InstanceData);
+    D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_RESOURCE_DESC desc = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, size, 1, 1, 1,
+        DXGI_FORMAT_UNKNOWN, {1,0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+    device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&mInstanceBuffer));
+    mInstanceBufView.BufferLocation = mInstanceBuffer->GetGPUVirtualAddress();
+    mInstanceBufView.SizeInBytes    = size;
+    mInstanceBufView.StrideInBytes  = size;
 }
 
 void GameObject::UpdateVertexBuffer()
@@ -286,6 +309,16 @@ void GameObject::EnsureAABBMesh()
 	sAABBIbView.BufferLocation = sAABBIB->GetGPUVirtualAddress();
 	sAABBIbView.Format         = DXGI_FORMAT_R16_UINT;
 	sAABBIbView.SizeInBytes    = ibSize;
+
+	// AABB 드로우용 1-element 인스턴스 버퍼
+	UINT instSize = sizeof(InstanceData);
+	D3D12_RESOURCE_DESC instRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, instSize,
+		1, 1, 1, DXGI_FORMAT_UNKNOWN, {1,0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+	device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &instRes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sAABBInstanceBuffer));
+	sAABBInstanceView.BufferLocation = sAABBInstanceBuffer->GetGPUVirtualAddress();
+	sAABBInstanceView.SizeInBytes    = instSize;
+	sAABBInstanceView.StrideInBytes  = instSize;
 }
 
 DirectX::BoundingBox GameObject::GetWorldAABB() const
@@ -315,16 +348,20 @@ void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMA
 
 	XMMATRIX world = XMMatrixScaling(aabb.Extents.x * 2.f, aabb.Extents.y * 2.f, aabb.Extents.z * 2.f)
 	               * XMMatrixTranslation(aabb.Center.x, aabb.Center.y, aabb.Center.z);
-	XMMATRIX mvp = world * view * proj;
-	XMFLOAT4X4 mvpT;
-	XMStoreFloat4x4(&mvpT, XMMatrixTranspose(mvp));
+	XMFLOAT4X4 worldF;
+	XMStoreFloat4x4(&worldF, world);
 
-	static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-	commandList->SetGraphicsRoot32BitConstants(0, 4,  white,          0);
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &mvpT.m[0][0], 4);
+	InstanceData id;
+	id.world = worldF;
+	id.color = { 1.f, 1.f, 1.f, 1.f };
+	void* mapped;
+	sAABBInstanceBuffer->Map(0, nullptr, &mapped);
+	memcpy(mapped, &id, sizeof(InstanceData));
+	sAABBInstanceBuffer->Unmap(0, nullptr);
 
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	commandList->IASetVertexBuffers(0, 1, &sAABBVbView);
+	commandList->IASetVertexBuffers(1, 1, &sAABBInstanceView);
 	commandList->IASetIndexBuffer(&sAABBIbView);
 	commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

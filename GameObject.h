@@ -45,6 +45,9 @@ public:
 	virtual DirectX::BoundingBox GetWorldAABB() const;
 	void RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj);
 
+	// 단일 인스턴스 버퍼 (비-배치 오브젝트용)
+	void CreateSingleInstanceBuffer(ComPtr<ID3D12Device> device);
+
 
 protected:
     // 업로드 힙 스테이징 버퍼를 갱신하고 더티 플래그 설정
@@ -85,6 +88,10 @@ protected:
     ComPtr<ID3D12Resource> vertexBufferUpload;
     ComPtr<ID3D12Resource> indexBufferUpload;
 
+    // 단일 인스턴스 버퍼 (업로드 힙, 1개 InstanceData)
+    ComPtr<ID3D12Resource>   mInstanceBuffer;
+    D3D12_VERTEX_BUFFER_VIEW mInstanceBufView = {};
+
 	// 노멀 라인 렌더링을 위한 멤버 변수들
 	ComPtr<ID3D12Resource> normalVertexBuffer;
 	ComPtr<ID3D12Resource> normalIndexBuffer;
@@ -113,4 +120,6 @@ protected:
     static ComPtr<ID3D12Resource>   sAABBIB;
     static D3D12_VERTEX_BUFFER_VIEW sAABBVbView;
     static D3D12_INDEX_BUFFER_VIEW  sAABBIbView;
+    static ComPtr<ID3D12Resource>   sAABBInstanceBuffer;
+    static D3D12_VERTEX_BUFFER_VIEW sAABBInstanceView;
 };

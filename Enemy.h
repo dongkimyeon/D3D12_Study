@@ -17,6 +17,11 @@ public:
 	static void LoadSharedMesh(ComPtr<ID3D12Device> device);
 	static void UnloadSharedMesh();
 
+	// 인스턴싱: 씬 초기화 시 최대 용량 할당, 매 프레임 RenderBatch 호출
+	static void BuildInstanceBuffer(ComPtr<ID3D12Device> device, UINT maxCount);
+	static void RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+	                        const std::vector<Enemy*>& enemies);
+
 	void SetTarget(const XMFLOAT3* pos)                              { mTarget    = pos; }
 	void SetColliders(const std::vector<DirectX::BoundingBox>* c)   { mColliders = c;   }
 	void SetEnemyList(const std::vector<Enemy*>* list)              { mEnemies   = list; }
@@ -61,6 +66,10 @@ private:
 	static bool                     sVBDirty;
 	static bool                     sIBDirty;
 	static DirectX::BoundingBox     sLocalAABB;
+
+	static ComPtr<ID3D12Resource>   sInstanceBuffer;
+	static D3D12_VERTEX_BUFFER_VIEW sInstanceView;
+	static UINT                     sMaxInstances;
 
 	int  mHp    = 100;
 	bool mAlive = true;

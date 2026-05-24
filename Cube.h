@@ -19,6 +19,10 @@ public:
     static void LoadSharedMesh(ComPtr<ID3D12Device> device);
     static void UnloadSharedMesh();
 
+    // 인스턴싱: 초기화 시 1회 빌드, 매 프레임 RenderBatch 호출
+    static void BuildInstanceBuffer(ComPtr<ID3D12Device> device, const std::vector<Cube*>& cubes);
+    static void RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList);
+
 private:
     XMFLOAT4 mColor = { 1,1,1,1 };
     DirectX::BoundingBox mAABB;
@@ -36,4 +40,8 @@ private:
     static bool                     sVBDirty;
     static bool                     sIBDirty;
     static DirectX::BoundingBox     sLocalAABB;
+
+    static ComPtr<ID3D12Resource>   sInstanceBuffer;
+    static D3D12_VERTEX_BUFFER_VIEW sInstanceView;
+    static UINT                     sInstanceCount;
 };

@@ -24,3 +24,9 @@ void Item_HP::OnPickup(Player* player)
     player->AddHP(10);
     SetInactive();
 }
+
+void Item_HP::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                          const std::vector<Item*>& items)
+{
+    Item::RenderBatch(commandList, sMesh, items);
+}

@@ -9,6 +9,8 @@ public:
 
     static void LoadSharedMesh(ComPtr<ID3D12Device> device);
     static void UnloadSharedMesh();
+    static void RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList,
+                            const std::vector<Item*>& items);
 
 protected:
     virtual ItemMesh& GetMesh() override { return sMesh; }

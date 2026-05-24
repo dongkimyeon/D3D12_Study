@@ -40,12 +40,19 @@ void Crosshair::Update(float dt) {}
 
 void Crosshair::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX , XMMATRIX )
 {
-    XMFLOAT4X4 identity;
-    XMStoreFloat4x4(&identity, XMMatrixTranspose(XMMatrixIdentity()));
+    // 크로스헤어는 스크린-스페이스 → viewProj = identity
+    XMFLOAT4X4 identityT;
+    XMStoreFloat4x4(&identityT, XMMatrixTranspose(XMMatrixIdentity()));
+    commandList->SetGraphicsRoot32BitConstants(0, 16, &identityT.m[0][0], 0);
 
-    static const float white[4] = { 1.f, 1.f, 1.f, 1.f };
-    commandList->SetGraphicsRoot32BitConstants(0, 4,  white,               0);
-    commandList->SetGraphicsRoot32BitConstants(0, 16, &identity.m[0][0],   4);
+    // 슬롯 1 인스턴스 버퍼에 world=identity, color=white 기록
+    InstanceData inst;
+    XMStoreFloat4x4(&inst.world, XMMatrixTranspose(XMMatrixIdentity()));
+    inst.color = { 1.f, 1.f, 1.f, 1.f };
+    void* mapped = nullptr;
+    mInstanceBuffer->Map(0, nullptr, &mapped);
+    memcpy(mapped, &inst, sizeof(InstanceData));
+    mInstanceBuffer->Unmap(0, nullptr);
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
@@ -57,6 +64,7 @@ void Crosshair::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX 
         indices.size() * sizeof(uint16_t), mIBDirty);
 
     commandList->IASetVertexBuffers(0, 1, &vbView);
+    commandList->IASetVertexBuffers(1, 1, &mInstanceBufView);
     commandList->IASetIndexBuffer(&ibView);
     commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
 

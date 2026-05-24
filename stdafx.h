@@ -52,6 +52,11 @@
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
+struct InstanceData {
+    XMFLOAT4X4 world;
+    XMFLOAT4   color;
+};
+
 
 enum class LogColor {
 	WHITE = 7,

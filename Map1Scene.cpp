@@ -117,6 +117,12 @@ void Map1Scene::Initialize()
 		mCubeAABBs.push_back(cube->GetWorldAABB()); // 갱신된 AABB 사용
 	}
 
+	// 큐브 인스턴스 버퍼 1회 빌드 (큐브는 정적 → 매 프레임 갱신 불필요)
+	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
+
+	// 큐브 인스턴스 버퍼 1회 빌드 (큐브는 정적 오브젝트)
+	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
+
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	// 입구: row=0,col=1 → 월드(-48, z=-50). 바로 안쪽 z=-48에 배치
@@ -146,6 +152,9 @@ void Map1Scene::Initialize()
 		b->SetColliders(&mCubeAABBs);
 		mBullets.push_back(b);
 	}
+
+	// 적 인스턴스 버퍼 용량 할당
+	Enemy::BuildInstanceBuffer(Framework::GetDevice(), (UINT)mEnemies.size());
 
 	ShowCursor(FALSE);
 }
@@ -244,18 +253,26 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	);
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
 
+	// viewProj를 프레임당 1회 루트 상수로 설정
+	XMFLOAT4X4 vpT;
+	XMStoreFloat4x4(&vpT, XMMatrixTranspose(view * proj));
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpT.m[0][0], 0);
+
+	// 비-배치 오브젝트 (Player, Gun, Bullet 등)
 	for (const auto& obj : mGameObjects)
 	{
 		Player* playerPtr = dynamic_cast<Player*>(obj);
 		if(playerPtr && Camera::sMode == eCameraMode::FirstPerson)
-			continue; // 1인칭 모드에서는 플레이어 모델 렌더링 안 함
-	
+			continue;
 		obj->Render(commandList, view, proj);
-
 	}
-		
+
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);
+
+	// 배치 렌더 (인스턴싱)
+	Cube::RenderBatch(commandList);
+	Enemy::RenderBatch(commandList, mEnemies);
 
 	if (Camera::sMode == eCameraMode::FirstPerson)
 		mCrosshair->Render(commandList, view, proj);
