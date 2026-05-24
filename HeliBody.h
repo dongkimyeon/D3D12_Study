@@ -1,5 +1,6 @@
 #pragma once
 #include "GameObject.h"
+#include <DirectXCollision.h>
 
 class HeliBody : public GameObject
 {

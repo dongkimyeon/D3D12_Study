@@ -32,10 +32,12 @@ private:
     float mBladeAngle = 0.0f;
     float mTailAngle  = 0.0f;
 
-    float mHeading      = 0.0f;
-    float mTiltPitch    = 0.0f;
-    float mTiltRoll     = 0.0f;
-    float mMoveSpeed    = 20.0f;
+    float    mHeading      = 0.0f;
+    float    mTiltPitch    = 0.0f;
+    float    mTiltRoll     = 0.0f;
+    float    mMoveSpeed    = 30.0f;
+    float    mAcceleration = 5.0f;
+    XMFLOAT3 mVelocity     = { 0.f, 0.f, 0.f };
     float mMouseSensitivity = 0.003f;
     POINT mPrevMousePos = {};
     bool  mFirstMouse   = true;

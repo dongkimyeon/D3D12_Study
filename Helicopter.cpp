@@ -51,16 +51,24 @@ void Helicopter::Update(float dt)
 	XMFLOAT3 bodyPosF = mBody->GetPosition();
 	XMVECTOR pos = XMLoadFloat3(&bodyPosF);
 
-	XMVECTOR fwd = XMVectorSet(sinf(mHeading), 0.f, cosf(mHeading), 0.f);
+	XMVECTOR fwd   = XMVectorSet(sinf(mHeading), 0.f, cosf(mHeading), 0.f);
 	XMVECTOR right = XMVectorSet(cosf(mHeading), 0.f, -sinf(mHeading), 0.f);
-	XMVECTOR up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	XMVECTOR up    = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 
-	if (Input::GetKey(eKeyCode::W)) { pos += fwd * mMoveSpeed * dt; targetPitch = maxTilt; }
-	if (Input::GetKey(eKeyCode::S)) { pos -= fwd * mMoveSpeed * dt; targetPitch = -maxTilt; }
-	if (Input::GetKey(eKeyCode::A)) { pos -= right * mMoveSpeed * dt; targetRoll = maxTilt; }
-	if (Input::GetKey(eKeyCode::D)) { pos += right * mMoveSpeed * dt; targetRoll = -maxTilt; }
-	if (Input::GetKey(eKeyCode::Q)) { pos -= up * mMoveSpeed * dt; }
-	if (Input::GetKey(eKeyCode::E)) { pos += up * mMoveSpeed * dt; }
+	XMVECTOR targetVel = XMVectorZero();
+	if (Input::GetKey(eKeyCode::W)) { targetVel += fwd   * mMoveSpeed; targetPitch =  maxTilt; }
+	if (Input::GetKey(eKeyCode::S)) { targetVel -= fwd   * mMoveSpeed; targetPitch = -maxTilt; }
+	if (Input::GetKey(eKeyCode::A)) { targetVel -= right * mMoveSpeed; targetRoll  =  maxTilt; }
+	if (Input::GetKey(eKeyCode::D)) { targetVel += right * mMoveSpeed; targetRoll  = -maxTilt; }
+	if (Input::GetKey(eKeyCode::Q)) { targetVel -= up    * mMoveSpeed; }
+	if (Input::GetKey(eKeyCode::E)) { targetVel += up    * mMoveSpeed; }
+
+	float accelT = 1.f - expf(-mAcceleration * dt);
+	XMVECTOR vel = XMLoadFloat3(&mVelocity);
+	vel = XMVectorLerp(vel, targetVel, accelT);
+	XMStoreFloat3(&mVelocity, vel);
+
+	pos += vel * dt;
 
 	// 기울기 보간 (지수 감쇠 lerp)
 	float t = 1.f - expf(-tiltSpeed * dt);
