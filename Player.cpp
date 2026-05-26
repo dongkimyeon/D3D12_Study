@@ -122,7 +122,17 @@ void Player::ResolveHorizontal(const std::vector<DirectX::BoundingBox>& cubes)
 		float dz = (p.Extents.z + c.Extents.z) - fabsf(p.Center.z - c.Center.z);
 
 		if (dx <= 0.0f || dy <= 0.0f || dz <= 0.0f) continue;
-		if (dy <= std::min(dx, dz)) continue; // 수직 접촉 → 수평 패스 스킵
+		if (dy <= std::min(dx, dz)) continue;
+
+		// 자동 턱 오르기: 땅에 있을 때 장애물 높이가 kStepHeight 이하면 올라감
+		float playerBottom = p.Center.y - p.Extents.y;
+		float obstacleTop  = c.Center.y + c.Extents.y;
+		float stepH = obstacleTop - playerBottom;
+		if (mOnGround && stepH > 0.0f && stepH <= kStepHeight) {
+			position.y += stepH;
+			p = ComputePhysicsAABB();
+			continue;
+		}
 
 		if (dx < dz) {
 			float push = (p.Center.x > c.Center.x) ? dx : -dx;

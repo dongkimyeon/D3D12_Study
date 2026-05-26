@@ -142,6 +142,7 @@ void Map2Scene::Initialize()
 		cube->Update(0.0f);
 		mCubeAABBs.push_back(cube->GetWorldAABB());
 	}
+	Camera::SetColliders(&mCubeAABBs);
 
 	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
 
@@ -263,6 +264,9 @@ void Map2Scene::Update(float dt)
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
 
+	if (mPlayer->GetPosition().y < -15.0f)
+		mPlayer->Respawn({ -38.0f, 0.0f, -38.0f });
+
 	if (!debugMode && Input::GetKeyDown(eKeyCode::LButton))
 		FireBullet();
 
@@ -356,6 +360,7 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void Map2Scene::Release()
 {
+	Camera::SetColliders(nullptr);
 	for (auto obj : mGameObjects)
 		delete obj;
 	mGameObjects.clear();

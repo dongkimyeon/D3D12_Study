@@ -5,6 +5,7 @@ DirectX::XMFLOAT3 Camera::camPos = { 0.0f, 25.0f, -25.0f };
 DirectX::XMFLOAT3 Camera::camForward = { 0.0f, 0.0f, 1.0f };
 DirectX::XMFLOAT3 Camera::camRight = { 1.0f, 0.0f, 0.0f };
 DirectX::XMFLOAT3 Camera::camUp = { 0.0f, 1.0f, 0.0f };
+const std::vector<DirectX::BoundingBox>* Camera::sColliders = nullptr;
 
 float Camera::moveSpeed = 10.0f;
 float Camera::lookSpeed = 0.006f;
@@ -33,12 +34,33 @@ void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerPitch ,float player
 		camPos = { playerPos.x, playerPos.y, playerPos.z };
 		
 	} else {
-		// 3인칭: 플레이어 뒤 6, 위 3
-		XMVECTOR target   = XMLoadFloat3(&playerPos);
-		XMVECTOR camPosV  = target - fwd * 3.0f + XMVectorSet(0, 1.5f, 0, 0);
+		// 3인칭: 스프링암 (레이캐스트로 벽 관통 방지)
+		static constexpr float kArmLength   = 2.0f;
+		static constexpr float kPivotHeight = 0.5f;
+		static constexpr float kProbeInset  = 0.15f; // 히트 지점에서 피벗 쪽으로 당기는 여유
+
+		XMVECTOR target  = XMLoadFloat3(&playerPos);
+		XMVECTOR pivot   = target + XMVectorSet(0, kPivotHeight, 0, 0);
+		XMVECTOR armDir  = -fwd; // pivot에서 카메라 방향 (플레이어 뒤쪽, 정규화됨)
+
+		// 레이캐스트: pivot → armDir 방향으로 kArmLength 만큼, 가장 가까운 교차점 찾기
+		float actualLength = kArmLength;
+		if (sColliders) {
+			for (const auto& box : *sColliders) {
+				float dist = 0.0f;
+				if (box.Intersects(pivot, armDir, dist) && dist < actualLength)
+					actualLength = dist - kProbeInset;
+			}
+			if (actualLength < 0.0f) actualLength = 0.0f;
+		}
+
+		XMVECTOR camPosV = pivot + armDir * actualLength;
 		XMStoreFloat3(&camPos, camPosV);
-		// 플레이어를 바라보는 방향으로 덮어씀
-		XMVECTOR lookDir = XMVector3Normalize(target - camPosV);
+
+		// 피벗(플레이어 머리)을 향해 바라봄
+		XMVECTOR lookDir = (actualLength > 0.01f)
+			? XMVector3Normalize(pivot - camPosV)
+			: fwd;
 		XMStoreFloat3(&camForward, lookDir);
 		XMVECTOR newRight = XMVector3Normalize(XMVector3Cross(XMVectorSet(0, 1, 0, 0), lookDir));
 		XMStoreFloat3(&camRight, newRight);

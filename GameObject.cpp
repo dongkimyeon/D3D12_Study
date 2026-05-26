@@ -61,17 +61,6 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 	UploadBufferIfDirty(commandList, indexBuffer, indexBufferUpload,
 		mIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,
 		indices.size() * sizeof(uint16_t), mIBDirty);
-	if (normalIndexCount > 0 && mNormalsDirty)
-	{
-		bool vbDirty = true, ibDirty = true;
-		UploadBufferIfDirty(commandList, normalVertexBuffer, normalVertexBufferUpload,
-			mNVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-			normalIndexCount * sizeof(OBJVertex), vbDirty);
-		UploadBufferIfDirty(commandList, normalIndexBuffer, normalIndexBufferUpload,
-			mNIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,
-			normalIndexCount * sizeof(uint16_t), ibDirty);
-		mNormalsDirty = false;
-	}
 
 	// viewProj 루트 상수 설정 (매 오브젝트마다 설정 — 씬마다 별도 처리 불필요)
 	XMMATRIX vp = view * proj;
@@ -95,15 +84,6 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 	commandList->IASetVertexBuffers(1, 1, &mInstanceBufView);
 	commandList->IASetIndexBuffer(&ibView);
 	commandList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-
-	if (normalIndexCount > 0)
-	{
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-		commandList->IASetVertexBuffers(0, 1, &normalVbView);
-		commandList->IASetIndexBuffer(&normalIbView);
-		commandList->DrawIndexedInstanced(normalIndexCount, 1, 0, 0, 0);
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	}
 
 	if (sShowAABB)
 		RenderAABB(commandList, view, proj);
@@ -367,13 +347,6 @@ void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMA
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-void GameObject::SetAlpha(float alpha)
-{
-	for (auto& v : vertices)
-		v.a = alpha;
-	UpdateVertexBuffer();
-}
-
 void GameObject::BakeScale(float sx, float sy, float sz)
 {
 	for (auto& v : vertices) {
@@ -397,113 +370,3 @@ void GameObject::BakeRotation(float pitch, float yaw, float roll)
 	UpdateVertexBuffer();
 }
 
-void GameObject::BakeRotationX(float angleDeg)
-{
-	float rad = XMConvertToRadians(angleDeg);
-	float cosA = cosf(rad);
-	float sinA = sinf(rad);
-	for (auto& v : vertices) {
-		float y = v.y, z = v.z;
-		v.y = cosA * y - sinA * z;
-		v.z = sinA * y + cosA * z;
-		float ny = v.ny, nz = v.nz;
-		v.ny = cosA * ny - sinA * nz;
-		v.nz = sinA * ny + cosA * nz;
-	}
-	UpdateVertexBuffer();
-}
-
-void GameObject::BuildNormalBuffer(ComPtr<ID3D12Device> device)
-{
-	if (indices.empty() || vertices.empty()) return;
-
-	std::vector<OBJVertex> normalVertices;
-	std::vector<uint16_t> normalIndices;
-
-	float normalLength = 0.5f; // 노멀(법선) 선의 길이 설정
-
-	// 정점이 아닌 삼각형(인덱스 3개) 단위로 루프를 돕니다.
-	for (size_t i = 0; i < indices.size(); i += 3)
-	{
-		// 삼각형을 이루는 세 정점 가져오기
-		OBJVertex v0 = vertices[indices[i]];
-		OBJVertex v1 = vertices[indices[i + 1]];
-		OBJVertex v2 = vertices[indices[i + 2]];
-
-		// 세 정점의 좌표 평균값 (면의 중심 위치)
-		float centerX = (v0.x + v1.x + v2.x) / 3.0f;
-		float centerY = (v0.y + v1.y + v2.y) / 3.0f;
-		float centerZ = (v0.z + v1.z + v2.z) / 3.0f;
-
-		// 세 정점의 법선 평균값 (면의 법선 방향, 필요시 정규화 추가 가능)
-		float normalX = (v0.nx + v1.nx + v2.nx) / 3.0f;
-		float normalY = (v0.ny + v1.ny + v2.ny) / 3.0f;
-		float normalZ = (v0.nz + v1.nz + v2.nz) / 3.0f;
-
-		// 시작점: 면의 중심, 색상은 주황색(R=1, G=0.5, B=0)
-		OBJVertex startPoint;
-		startPoint.x = centerX; startPoint.y = centerY; startPoint.z = centerZ;
-		startPoint.r = 1.0f; startPoint.g = 0.5f; startPoint.b = 0.0f; startPoint.a = 1.0f;
-		// 셰이더 등에 영향을 주지 않으려면 nx, ny, nz 등은 0으로 비워둬도 무방합니다.
-
-		// 끝점: 면의 중심 + 면 법선 벡터 * 길이
-		OBJVertex endPoint = startPoint;
-		endPoint.x += normalX * normalLength;
-		endPoint.y += normalY * normalLength;
-		endPoint.z += normalZ * normalLength;
-
-		// 버퍼 벡터에 정점 2개 추가
-		normalVertices.push_back(startPoint);
-		normalVertices.push_back(endPoint);
-
-		// 해당 라인의 시작점, 끝점 인덱스 저장
-		normalIndices.push_back(static_cast<uint16_t>(normalVertices.size() - 2));
-		normalIndices.push_back(static_cast<uint16_t>(normalVertices.size() - 1));
-	}
-
-	normalIndexCount = static_cast<UINT>(normalIndices.size());
-
-	// ---------------------------------
-	// 법선 정점/인덱스 버퍼 생성 (업로드 스테이징 + 디폴트 힙 GPU 버퍼)
-	D3D12_HEAP_PROPERTIES uploadHeap  = { D3D12_HEAP_TYPE_UPLOAD };
-	D3D12_HEAP_PROPERTIES defaultHeap = { D3D12_HEAP_TYPE_DEFAULT };
-
-	UINT nvbSize = static_cast<UINT>(normalVertices.size() * sizeof(OBJVertex));
-	D3D12_RESOURCE_DESC vbRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, nvbSize, 1, 1, 1,
-								  DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-
-	device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &vbRes,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalVertexBufferUpload));
-	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &vbRes,
-		D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&normalVertexBuffer));
-
-	void* vbData;
-	normalVertexBufferUpload->Map(0, nullptr, &vbData);
-	memcpy(vbData, normalVertices.data(), nvbSize);
-	normalVertexBufferUpload->Unmap(0, nullptr);
-
-	normalVbView.BufferLocation = normalVertexBuffer->GetGPUVirtualAddress();
-	normalVbView.StrideInBytes = sizeof(OBJVertex);
-	normalVbView.SizeInBytes = nvbSize;
-	mNVBState = D3D12_RESOURCE_STATE_COPY_DEST;
-
-	UINT nibSize = static_cast<UINT>(normalIndices.size() * sizeof(uint16_t));
-	D3D12_RESOURCE_DESC ibRes = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, nibSize, 1, 1, 1,
-								  DXGI_FORMAT_UNKNOWN, {1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
-
-	device->CreateCommittedResource(&uploadHeap,  D3D12_HEAP_FLAG_NONE, &ibRes,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&normalIndexBufferUpload));
-	device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &ibRes,
-		D3D12_RESOURCE_STATE_COPY_DEST,    nullptr, IID_PPV_ARGS(&normalIndexBuffer));
-
-	void* ibData;
-	normalIndexBufferUpload->Map(0, nullptr, &ibData);
-	memcpy(ibData, normalIndices.data(), nibSize);
-	normalIndexBufferUpload->Unmap(0, nullptr);
-
-	normalIbView.BufferLocation = normalIndexBuffer->GetGPUVirtualAddress();
-	normalIbView.Format = DXGI_FORMAT_R16_UINT;
-	normalIbView.SizeInBytes = nibSize;
-	mNIBState = D3D12_RESOURCE_STATE_COPY_DEST;
-	mNormalsDirty = true;
-}

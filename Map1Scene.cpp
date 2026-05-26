@@ -113,9 +113,10 @@ void Map1Scene::Initialize()
 
 	mCubeAABBs.reserve(mWallCubes.size());
 	for (auto* cube : mWallCubes) {
-		cube->Update(0.0f);                          // worldMatrix, mAABB 초기화
-		mCubeAABBs.push_back(cube->GetWorldAABB()); // 갱신된 AABB 사용
+		cube->Update(0.0f);
+		mCubeAABBs.push_back(cube->GetWorldAABB());
 	}
+	Camera::SetColliders(&mCubeAABBs);
 
 	// 큐브 인스턴스 버퍼 1회 빌드 (큐브는 정적 → 매 프레임 갱신 불필요)
 	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
@@ -197,6 +198,9 @@ void Map1Scene::Update(float dt)
 
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
+
+	if (mPlayer->GetPosition().y < -15.0f)
+		mPlayer->Respawn({ -48.0f, 2.0f, -48.0f });
 
 	if (!debugMode && Input::GetKeyDown(eKeyCode::LButton))
 		FireBullet();
@@ -280,6 +284,7 @@ void Map1Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void Map1Scene::Release()
 {
+	Camera::SetColliders(nullptr);
 	for (auto obj : mGameObjects)
 		delete obj;
 	mGameObjects.clear();

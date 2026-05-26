@@ -30,6 +30,7 @@ public:
 	void AddATK(int amount)        { mATK += amount; }
 	void AddMoveSpeed(float amount){ mMoveSpeed += amount; }
 	void TakeDamage(int dmg)       { if (mInvTimer <= 0.0f) { mHP -= dmg; if (mHP < 0) mHP = 0; mInvTimer = kInvDuration; } }
+	void Respawn(XMFLOAT3 spawnPos){ position = spawnPos; mVelocityY = 0.0f; mOnGround = false; }
 
 private:
 	// 현재 position + mYaw 기준으로 물리 AABB 계산 (worldMatrix 갱신 전에도 사용 가능)
@@ -58,6 +59,7 @@ private:
 	bool  mOnGround  = false;
 	const std::vector<DirectX::BoundingBox>* mColliders = nullptr;
 
-	static constexpr float kGravity   = -20.0f;
+	static constexpr float kGravity    = -20.0f;
 	static constexpr float kJumpSpeed =   8.0f;
+	static constexpr float kStepHeight =  0.45f;
 };
