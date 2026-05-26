@@ -83,7 +83,7 @@ Framework::Initialize()에서 아래 순서로 진행된다.
       Descriptor는 GPU 리소스(버퍼, 텍스처 등)를 어떻게 해석할지 설명하는 구조체이다.
       Heap은 이 Descriptor들을 모아두는 배열이다.
       - RTV Heap (Render Target View): 백 버퍼 2개 + MSAA 렌더타겟 1개 = 3개 슬롯
-      - DSV Heap (Depth Stencil View): MSAA 깊이 버퍼 1개 슬롯
+      - DSV Heap (Depth Stencil View): 2개 슬롯 할당. MSAA 깊이 버퍼는 슬롯 1번에 배치되며 슬롯 0은 예약 상태.
 
   (6) 프레임 버퍼 및 MSAA 렌더타겟 생성 (CreateFrameBuffers)
       스왑 체인에서 GetBuffer()로 백 버퍼 2개를 가져와 RTV를 생성한다.
@@ -293,25 +293,88 @@ OBJLoader::Load()는 .obj 파일을 한 줄씩 읽어 정점/인덱스 데이터
   DrawIndexedInstanced() 호출 시 인스턴스마다 한 칸씩 전진한다.
 
 [ Cube 정적 인스턴싱 과정 ]
-  (1) BuildInstanceBuffer(device, cubes): 큐브 배열을 순회하며 각 큐브의 worldMatrix와 mColor를
-      InstanceData 배열에 채우고 GPU 업로드 힙 버퍼를 생성한다.
-      큐브는 정적(이동 없음)이므로 초기화 시 한 번만 빌드한다.
-  (2) RenderBatch(commandList): 공유 메쉬(VB/IB)를 Slot 0에,
-      인스턴스 버퍼를 Slot 1에 바인딩하고 DrawIndexedInstanced(indexCount, instanceCount)를 호출한다.
+  (1) BuildInstanceBuffer(device, cubes):
+      큐브 배열을 순회하며 각 큐브의 worldMatrix와 mColor를 InstanceData 배열에 채운다.
+      이 배열 크기만큼 GPU Upload Heap 버퍼를 생성하고 Map()/memcpy()/Unmap()으로 업로드한다.
+      큐브는 이후 이동이 없으므로 초기화 시 이 과정을 단 한 번만 수행한다.
+  (2) RenderBatch(commandList):
+      IASetVertexBuffers()로 Slot 0(공유 메쉬 VB)와 Slot 1(인스턴스 버퍼)을 동시에 바인딩한다.
+      IASetIndexBuffer()로 공유 메쉬 IB를 바인딩한 뒤,
+      DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0)를 호출한다.
+      GPU는 indexCount개의 인덱스를 instanceCount번 반복해 그린다.
+      각 반복마다 Slot 1 포인터가 InstanceData 1개(80B)씩 전진하므로
+      인스턴스마다 다른 월드 행렬과 색상이 셰이더에 전달된다.
 
 [ Enemy 동적 인스턴싱 과정 ]
-  (1) BuildInstanceBuffer(device, maxCount): 최대 적 수만큼 업로드 버퍼를 미리 할당한다.
-  (2) RenderBatch(commandList, enemies): 매 프레임 살아있는 적의 worldMatrix를 업로드 버퍼에 쓰고
-      DrawIndexedInstanced로 한 번에 그린다.
+  (1) BuildInstanceBuffer(device, maxCount):
+      최대 적 수만큼 Upload Heap 버퍼를 미리 할당(예약)한다. 데이터는 아직 비어 있다.
+  (2) RenderBatch(commandList, enemies):
+      ① 살아있는 적만 골라 worldMatrix와 색상을 InstanceData 배열에 채운다.
+      ② Map() → memcpy(alive 적 데이터) → Unmap()으로 Upload Heap을 갱신한다.
+      ③ Cube와 동일하게 Slot 0/1 바인딩 후 DrawIndexedInstanced(indexCount, aliveCount)를 호출한다.
+      죽은 적(IsAlive() == false)은 배열에서 제외되므로 그려지지 않는다.
 
 [ 단일 오브젝트(비-배치) 처리 ]
   Player, Gun, Bullet 등 개수가 적은 오브젝트는 GameObject::Render()를 통해 개별 Draw Call로 그린다.
   이 경우에도 인스턴스 버퍼 1개짜리(단일 인스턴스 버퍼)를 사용해 셰이더 입력 구조를 통일한다.
+  즉, 모든 오브젝트는 인스턴스 수가 1이든 수천이든 동일한 셰이더·PSO·Input Layout을 공유한다.
+
+[ DrawIndexedInstanced 파라미터 정리 ]
+  DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
+                       BaseVertexLocation, StartInstanceLocation)
+  - IndexCountPerInstance: 메쉬 인덱스 수 (큐브 36, 구 등 메쉬마다 다름)
+  - InstanceCount: 이번 프레임에 그릴 인스턴스 수
+  - 나머지 3개: 버퍼 오프셋, 보통 모두 0
+
+[ 셰이더와의 연결 흐름 요약 ]
+  CPU(C++)                         GPU(HLSL)
+  ─────────────────────────────    ──────────────────────────────────
+  Slot 0 VB  (위치/법선/색상)  →  vs_main 입력 POSITION, NORMAL, COLOR
+  Slot 1 IB  (인스턴스 버퍼)   →  vs_main 입력 WORLD0~3(월드 행렬 4행), TINT(색상)
+  Root Constant b0 (viewProj)  →  cbuffer 상수로 셰이더 내 viewProj 접근
+
+  셰이더에서는 WORLD0~WORLD3 네 개의 float4를 조합해 4×4 월드 행렬을 복원하고,
+  mul(mul(float4(pos,1), world), viewProj)로 최종 클립 좌표를 계산한다.
+
+[ VB/IB와 인스턴스 버퍼의 힙 전략 차이 ]
+
+  오브젝트의 종류에 따라 GPU 메모리 전략이 다르다.
+
+  (A) 공유 메쉬 VB/IB (Cube, Enemy, Item 공유 정점/인덱스):
+      - Upload Heap(스테이징) + Default Heap(GPU 전용) 이중 구조.
+      - 초기화 시 Upload Heap에 데이터를 올린 뒤 더티 플래그(sVBDirty=true)를 세움.
+      - 첫 RenderBatch() 호출 시 CopyBufferRegion()으로 Default Heap에 단 1회 복사.
+      - 이후 sVBDirty=false가 되어 다시는 복사하지 않는다.
+      - GPU는 Default Heap을 읽으므로 접근 속도가 빠르다.
+
+  (B) 인스턴스 버퍼 (Enemy, Item 월드 행렬·색상):
+      - Upload Heap만 사용. Default Heap 없음.
+      - 매 프레임 Map() → memcpy → Unmap() 으로 CPU가 직접 데이터를 갱신한다.
+      - Default Heap 복사 없이 GPU가 Upload Heap을 직접 읽는다.
+      - 매 프레임 위치가 바뀌는 데이터를 Default Heap에 복사하면 오히려 배리어 비용이
+        발생하므로, Upload Heap에서 직접 읽는 방식이 동적 데이터에 더 적합하다.
+
+  (C) Cube 인스턴스 버퍼:
+      - Cube는 정적이므로 BuildInstanceBuffer() 시 Upload Heap에 1회 기록 후 변경 없음.
+      - GPU는 매 프레임 이 Upload Heap을 그대로 읽는다 (Default Heap 복사 없음).
+
+  정리:
+    메쉬(VB/IB)         → Upload→Default Heap, 1회 복사, 더티 플래그
+    동적 인스턴스 버퍼  → Upload Heap만, 매 프레임 Map/Unmap
+    정적 인스턴스 버퍼  → Upload Heap만, 초기 1회 기록 후 불변
 
 
 --------------------------------------------------------------------------------
 9. GPU 버퍼 관리 (더티 플래그 패턴)
 --------------------------------------------------------------------------------
+
+[ 더티 플래그 패턴이란? ]
+  더티 플래그(Dirty Flag)는 "데이터가 변경되었지만 아직 반영되지 않았음"을 표시하는
+  불리언 플래그를 사용하는 소프트웨어 패턴이다.
+  데이터가 바뀔 때마다 즉시 처리하는 대신, 플래그(mVBDirty = true)만 세워두고
+  실제로 결과가 필요한 시점(Render)에서 한 번만 처리한다.
+  이 방식을 쓰는 이유: GPU 버퍼 업로드처럼 비용이 큰 연산을 최소 횟수만 실행하기 위해서다.
+  예를 들어 Update()에서 위치를 10번 바꿔도 Render() 직전 1회만 GPU에 올리면 충분하다.
 
 DX12에서 CPU 데이터를 GPU에 올리는 과정은 명시적이며 비용이 있다.
 불필요한 업로드를 막기 위해 더티 플래그(mVBDirty, mIBDirty)를 사용한다.
@@ -501,6 +564,14 @@ DX12에서 CPU 데이터를 GPU에 올리는 과정은 명시적이며 비용이
     DirectX 내장 함수로 Ray-AABB 교차 검사를 수행한다.
     Dist는 원점에서 교차점까지의 거리를 반환한다.
 
+[ SetFollowTarget() 호출 구조 ]
+  Camera::SetFollowTarget()은 Player::Update() 끝에서 매 프레임 직접 호출된다:
+    Camera::SetFollowTarget(position, mPitch, mYaw);
+  즉, 플레이어가 위치/회전을 갱신한 뒤 즉시 카메라에 반영하는 구조다.
+  Camera::Update()는 디버그 카메라 전용이며, 일반 플레이 중 카메라 위치는
+  Player::Update() → SetFollowTarget() 경로로만 갱신된다.
+  덕분에 카메라가 항상 물리 처리가 끝난 최신 플레이어 위치를 기반으로 배치된다.
+
 [ 1인칭 시 플레이어 메쉬 숨기기 ]
   1인칭 모드에서 플레이어 자신의 메쉬가 카메라를 가리므로 렌더링을 건너뛴다.
   Map1Scene::Render()와 Map2Scene::Render() 양쪽 모두에서 아래 코드로 처리한다:
@@ -588,6 +659,18 @@ DX12에서 CPU 데이터를 GPU에 올리는 과정은 명시적이며 비용이
 
   감지 범위(mDetectRange): 한 번이라도 플레이어가 범위에 들어오면 mIsChasing = true로 영구 추격.
 
+[ Flow Field 저장 구조 및 BFS 최적화 ]
+
+  Flow Field는 논리적으로 2D 배열이지만, Enemy에 전달할 때는 1D 포인터로 펼쳐서 전달한다:
+    e->SetFlowField(&mFlowField[0][0], kMazeSize, kMazeSpacing, kMazeOffset);
+  Enemy 내부에서는 `mFlowField[eRow * mGridSize + eCol]`로 임의 접근한다.
+  2D 배열을 1D 포인터로 다루면 Enemy가 맵 크기나 씬 구조를 몰라도 되므로 결합도가 낮아진다.
+
+  BFS 큐도 힙 할당 없이 구현된다:
+    static std::pair<int,int> buf[kMazeSize * kMazeSize];
+  static 지역 변수이므로 UpdateFlowField()가 매 프레임 호출되어도 배열을 새로 할당하지 않는다.
+  head/tail 인덱스만으로 큐를 흉내 내며, BFS가 끝나면 다음 프레임에 덮어쓴다.
+
 [ 적끼리 분리 (SeparateFromEnemies) ]
   같은 그룹의 적끼리 겹치지 않도록 밀어낸다.
   분리 반경(kSepRadius = 0.8)보다 가까우면 차이 벡터 방향으로 (겹침량 * 0.5)만큼 밀어낸다.
@@ -672,24 +755,9 @@ Item 추상 기반 클래스에서 3종의 아이템이 파생된다:
   아이템 인스턴스 버퍼는 타입당 최대 100개 분량을 미리 할당한다.
 
 
---------------------------------------------------------------------------------
-18. ImGui UI
---------------------------------------------------------------------------------
-
-ImGui는 별도의 쉐이더나 버퍼 없이 DX12 위에 즉시 모드(Immediate Mode) UI를 렌더링한다.
-Framework::Update()에서 NewFrame()을 호출하고, Framework::Render()에서 ImGui::Render()로 그린다.
-현재 게임 씬(Map1/Map2)에는 ImGui::Begin/Text 등의 호출이 없으므로 실제로 화면에 표시되는 UI는 없다.
-(ImGui 인프라만 초기화된 상태이며, 스탯 표시 등은 추후 추가 가능한 구조)
-
-ImGui는 MSAA 렌더타겟이 아닌 최종 백 버퍼에 직접 그린다.
-(MSAA를 거치지 않아도 UI는 텍스트/사각형이라 계단 현상이 거의 없음)
-
-렌더링 순서:
-  [MSAA RT] → 씬 렌더링 → Resolve → [백 버퍼] → ImGui 렌더링 → Present
-
 
 --------------------------------------------------------------------------------
-19. 추가 구현 내용 요약
+18. 추가 구현 내용 요약
 --------------------------------------------------------------------------------
 
   (1) 자동 계단 오르기 (Auto-Step)
@@ -725,7 +793,7 @@ ImGui는 MSAA 렌더타겟이 아닌 최종 백 버퍼에 직접 그린다.
 
 
 --------------------------------------------------------------------------------
-20. 클래스 구조 요약
+19. 클래스 구조 요약
 --------------------------------------------------------------------------------
 
 Framework         DX12 초기화, 메인 루프, 렌더링 프레임 관리
