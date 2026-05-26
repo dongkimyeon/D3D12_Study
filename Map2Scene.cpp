@@ -325,7 +325,7 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 		XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0),
 		XMVectorSet(0, 1, 0, 0)
 	);
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(70.0f * XM_PI / 180.0f, (float)Framework::GetWidth() / Framework::GetHeight(), 0.1f, 1000.0f);
 
 	// viewProj를 프레임당 1회 루트 상수로 설정
 	XMFLOAT4X4 vpT;

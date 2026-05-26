@@ -43,7 +43,7 @@
 
 [ 초기 창 크기 ]
   1920 × 1080 (WS_OVERLAPPEDWINDOW 윈도우)
-  주의: 게임 씬의 투영 행렬은 Aspect를 1280/720으로 하드코딩하여 사용한다.
+  투영 행렬의 Aspect는 Framework::GetWidth() / Framework::GetHeight()로 실제 창 크기를 참조한다.
 
 [ 게임 흐름 ]
   실행 → 타이틀 화면(START 클릭) → 맵 선택(Map1 또는 Map2 클릭) → 게임 시작
@@ -255,8 +255,8 @@ OBJLoader::Load()는 .obj 파일을 한 줄씩 읽어 정점/인덱스 데이터
 
 [ Projection 행렬 ]
   XMMatrixPerspectiveFovLH(FOV, AspectRatio, Near, Far)
-  게임 씬: FOV=70도, Aspect=1280/720, Near=0.1, Far=1000
-  타이틀/맵선택 씬: FOV=45도, Near=0.1, Far=100
+  게임 씬: FOV=70도, Aspect=실제창크기(GetWidth/GetHeight), Near=0.1, Far=1000
+  타이틀/맵선택 씬: FOV=45도, Aspect=실제창크기(GetWidth/GetHeight), Near=0.1, Far=100
 
 [ ViewProj 전달 방식 ]
   Root Signature에서 b0에 16개의 32bit 상수를 등록했다.
