@@ -16,7 +16,6 @@ public:
 	static Scene* CreateScene(const std::wstring& name)
 	{
 		T* newScene = new T();
-		newScene->SetName(name); 
 		//newScene->Initialize();
 
 		mScenes.insert({ name, newScene });

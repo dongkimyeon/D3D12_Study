@@ -144,7 +144,6 @@
     <ClCompile Include="Crosshair.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="Enemy.cpp" />
-    <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Framework.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="Gun.cpp" />
@@ -190,7 +189,6 @@
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="Crosshair.h" />
     <ClInclude Include="Enemy.h" />
-    <ClInclude Include="Entity.h" />
     <ClInclude Include="Framework.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="Gun.h" />

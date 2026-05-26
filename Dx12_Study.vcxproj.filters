@@ -96,9 +96,6 @@
     <ClCompile Include="Map2Scene.cpp">
       <Filter>Scene\Scenes</Filter>
     </ClCompile>
-    <ClCompile Include="Entity.cpp">
-      <Filter>Scene\SceneHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="Scene.cpp">
       <Filter>Scene\SceneHelpers</Filter>
     </ClCompile>
@@ -208,9 +205,6 @@
     </ClInclude>
     <ClInclude Include="Map2Scene.h">
       <Filter>Scene\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="Entity.h">
-      <Filter>Scene\SceneHelpers</Filter>
     </ClInclude>
     <ClInclude Include="LoadScene.h">
       <Filter>Scene\SceneHelpers</Filter>

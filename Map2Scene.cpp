@@ -332,9 +332,14 @@ void Map2Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	XMStoreFloat4x4(&vpT, XMMatrixTranspose(view * proj));
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpT.m[0][0], 0);
 
-	// 비-배치 오브젝트
+	// 비-배치 오브젝트 (1인칭 시 플레이어 메쉬 스킵)
 	for (const auto& obj : mGameObjects)
+	{
+		Player* playerPtr = dynamic_cast<Player*>(obj);
+		if (playerPtr && Camera::sMode == eCameraMode::FirstPerson)
+			continue;
 		obj->Render(commandList, view, proj);
+	}
 
 	for (auto* b : mBullets)
 		b->Render(commandList, view, proj);

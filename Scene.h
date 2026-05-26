@@ -1,17 +1,16 @@
 #pragma once
 #include "stdafx.h"
-#include "Entity.h"
 
-class Scene : public Entity
+class Scene
 {
 public:
 	Scene() {}
 	virtual ~Scene() {}
 
-	virtual void Initialize() = 0; // ¼ø¼ö °¡»ó ÇÔ¼ö: ÀÚ½Ä Å¬·¡½º¿¡¼­ ¹«Á¶°Ç ±¸ÇöÇØ¾ß ÇÔ
+	virtual void Initialize() = 0; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½: ï¿½Ú½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ ï¿½ï¿½
 	virtual void Update(float dt) = 0;
 
-	// D3D12 Ä¿¸Çµå ¸®½ºÆ®¸¦ ¹Þ¾Æ °³º° ¾À¿¡¼­ ¿ÀºêÁ§Æ®µéÀ» ±×¸± ¼ö ÀÖ°Ô º¯°æ
+	// D3D12 Ä¿ï¿½Çµï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Þ¾ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ ï¿½ï¿½ ï¿½Ö°ï¿½ ï¿½ï¿½ï¿½ï¿½
 	virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList) = 0;
 
 	virtual void Release() = 0;
