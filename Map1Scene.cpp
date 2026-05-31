@@ -121,9 +121,6 @@ void Map1Scene::Initialize()
 	// 큐브 인스턴스 버퍼 1회 빌드 (큐브는 정적 → 매 프레임 갱신 불필요)
 	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
 
-	// 큐브 인스턴스 버퍼 1회 빌드 (큐브는 정적 오브젝트)
-	Cube::BuildInstanceBuffer(Framework::GetDevice(), mWallCubes);
-
 	mPlayer = new Player();
 	mPlayer->Initialize(Framework::GetDevice());
 	// 입구: row=0,col=1 → 월드(-48, z=-50). 바로 안쪽 z=-48에 배치

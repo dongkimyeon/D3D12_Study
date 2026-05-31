@@ -10,7 +10,11 @@
       "Bash(powershell *)",
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kdy03\\\\Desktop\\\\Dx12_Study\\\\D3D12_Study\" -Recurse -File -Name)",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(grep -v \"imgui\\\\\\\\\")",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\kdy03\\\\Desktop\\\\Dx12_Study\\\\D3D12_Study\\\\imgui\")",
+      "Bash(Remove-Item -Force \"C:\\\\Users\\\\kdy03\\\\Desktop\\\\Dx12_Study\\\\D3D12_Study\\\\imgui.ini\")",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }

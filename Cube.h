@@ -42,6 +42,9 @@ private:
     static DirectX::BoundingBox     sLocalAABB;
 
     static ComPtr<ID3D12Resource>   sInstanceBuffer;
+    static ComPtr<ID3D12Resource>   sInstanceUpload;
     static D3D12_VERTEX_BUFFER_VIEW sInstanceView;
     static UINT                     sInstanceCount;
+    static D3D12_RESOURCE_STATES    sInstanceState;
+    static bool                     sInstanceDirty;
 };

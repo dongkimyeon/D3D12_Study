@@ -14,8 +14,11 @@ bool    Cube::sVBDirty = false;
 bool    Cube::sIBDirty = false;
 DirectX::BoundingBox Cube::sLocalAABB;
 ComPtr<ID3D12Resource>   Cube::sInstanceBuffer;
+ComPtr<ID3D12Resource>   Cube::sInstanceUpload;
 D3D12_VERTEX_BUFFER_VIEW Cube::sInstanceView = {};
 UINT                     Cube::sInstanceCount = 0;
+D3D12_RESOURCE_STATES    Cube::sInstanceState = D3D12_RESOURCE_STATE_COPY_DEST;
+bool                     Cube::sInstanceDirty = false;
 
 void Cube::LoadSharedMesh(ComPtr<ID3D12Device> device)
 {
@@ -90,9 +93,9 @@ void Cube::UnloadSharedMesh()
 {
     sVB.Reset();  sVBUpload.Reset();
     sIB.Reset();  sIBUpload.Reset();
-    sInstanceBuffer.Reset();
+    sInstanceBuffer.Reset(); sInstanceUpload.Reset();
     sIndexCount = sInstanceCount = 0;
-    sVBDirty = sIBDirty = false;
+    sVBDirty = sIBDirty = sInstanceDirty = false;
 }
 
 void Cube::BuildInstanceBuffer(ComPtr<ID3D12Device> device, const std::vector<Cube*>& cubes)
@@ -102,24 +105,30 @@ void Cube::BuildInstanceBuffer(ComPtr<ID3D12Device> device, const std::vector<Cu
 
     UINT bufSize = sInstanceCount * sizeof(InstanceData);
     D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
+    D3D12_HEAP_PROPERTIES def    = { D3D12_HEAP_TYPE_DEFAULT };
     D3D12_RESOURCE_DESC desc = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, bufSize, 1, 1, 1,
         DXGI_FORMAT_UNKNOWN, {1,0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
     device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sInstanceBuffer));
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&sInstanceUpload));
+    device->CreateCommittedResource(&def, D3D12_HEAP_FLAG_NONE, &desc,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&sInstanceBuffer));
 
     void* mapped;
-    sInstanceBuffer->Map(0, nullptr, &mapped);
+    sInstanceUpload->Map(0, nullptr, &mapped);
     InstanceData* ptr = reinterpret_cast<InstanceData*>(mapped);
     for (UINT i = 0; i < sInstanceCount; ++i)
     {
         ptr[i].world = cubes[i]->worldMatrix;
         ptr[i].color = cubes[i]->mColor;
     }
-    sInstanceBuffer->Unmap(0, nullptr);
+    sInstanceUpload->Unmap(0, nullptr);
 
     sInstanceView.BufferLocation = sInstanceBuffer->GetGPUVirtualAddress();
     sInstanceView.SizeInBytes    = bufSize;
     sInstanceView.StrideInBytes  = sizeof(InstanceData);
+    sInstanceState = D3D12_RESOURCE_STATE_COPY_DEST;
+    sInstanceDirty = true;
 }
 
 void Cube::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -150,8 +159,9 @@ void Cube::RenderBatch(ComPtr<ID3D12GraphicsCommandList>& commandList)
         commandList->ResourceBarrier(1, &b);
         state = target; dirty = false;
     };
-    flush(sVB, sVBUpload, sVBState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, sVbView.SizeInBytes, sVBDirty);
-    flush(sIB, sIBUpload, sIBState, D3D12_RESOURCE_STATE_INDEX_BUFFER,               sIbView.SizeInBytes, sIBDirty);
+    flush(sVB,             sVBUpload,       sVBState,       D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, sVbView.SizeInBytes,      sVBDirty);
+    flush(sIB,             sIBUpload,       sIBState,       D3D12_RESOURCE_STATE_INDEX_BUFFER,               sIbView.SizeInBytes,      sIBDirty);
+    flush(sInstanceBuffer, sInstanceUpload, sInstanceState, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, sInstanceView.SizeInBytes, sInstanceDirty);
 
     commandList->IASetVertexBuffers(0, 1, &sVbView);
     commandList->IASetVertexBuffers(1, 1, &sInstanceView);

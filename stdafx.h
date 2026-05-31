@@ -32,11 +32,6 @@
 #include <DirectXCollision.h>   // BoundingBox, Ray-AABB 교차 판정용
 
 
-#include "imgui.h"
-#include "backends/imgui_impl_dx12.h"   
-#include "backends/imgui_impl_win32.h"
-
-
 // 사용자 정의 헤더 파일
 #include "Input.h"
 #include "Time.h"
@@ -62,7 +57,7 @@ enum class LogColor {
 	WHITE = 7,
 	CYAN = 11,   // [D3D12]
 	GREEN = 10,   // [Shader]
-	YELLOW = 14,   // [ImGui]
+	YELLOW = 14,
 	MAGENTA = 13,   // [System]
 	RED = 12,   // [Error]
 	BLUE = 9,    // [Info]

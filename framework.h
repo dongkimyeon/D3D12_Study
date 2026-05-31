@@ -35,7 +35,6 @@ private:
     void CreateDepthStencilView();     // 깊이 버퍼 리소스 생성
     void CreateSyncObjects();          // CPU-GPU 동기화 객체(Fence) 생성
     void CompileShaders();             // 셰이더 컴파일 및 파이프라인 상태(PSO) 생성
-    void CreateImGuiSrvHeap();         // ImGui용 셰이더 리소스 뷰 힙 생성
 
     void WaitForGPU();                 // GPU가 명령 처리를 마칠 때까지 대기 (동기화)
     void Update();                     // 매 프레임 로직 업데이트
@@ -69,7 +68,6 @@ private:
     ComPtr<ID3D12Fence> mFence;                 // 동기화용 펜스
     ComPtr<ID3D12RootSignature> mRootSignature; // 셰이더 리소스 바인딩 레이아웃
     ComPtr<ID3D12PipelineState> mPipelineState; // 파이프라인 상태 객체 (PSO)
-    ComPtr<ID3D12DescriptorHeap> mImGuiSrvHeap; // ImGui용 힙
 	ComPtr<ID3D12Debug> mDebugController;       // 디버그 제어기
 	
 	// MSAA (멀티 샘플 안티앨리어싱) 관련

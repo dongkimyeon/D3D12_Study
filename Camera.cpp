@@ -69,11 +69,9 @@ void Camera::SetFollowTarget(XMFLOAT3 playerPos, float playerPitch ,float player
 
 void Camera::Update(float dt)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	
 	if (debugMode) {
 		// 1. 카메라 마우스 회전 제어
-		if (!io.WantCaptureMouse && Input::GetKey(eKeyCode::LButton))
+		if (Input::GetKey(eKeyCode::LButton))
 		{
 			POINT currMousePos;
 			GetCursorPos(&currMousePos);

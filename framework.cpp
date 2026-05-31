@@ -49,24 +49,8 @@ void Framework::Initialize(HWND hwnd)
 	CreateDepthStencilView();       // 깊이 버퍼 생성
 	CreateSyncObjects();            // CPU-GPU 동기화 객체(Fence) 생성
 	CompileShaders();               // 셰이더 및 파이프라인(PSO) 설정
-	CreateImGuiSrvHeap();           // UI(ImGui)용 리소스 힙 생성
 
-	// [3] 외부 라이브러리 및 매니저 초기화 (ImGui, Time, Input, Scene)
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	PrintLog(LogColor::YELLOW, "[ImGui] Context Created");
-	ImGui::StyleColorsDark();
-	ImGui_ImplWin32_Init(mHwnd);
-	PrintLog(LogColor::YELLOW, "[ImGui] Win32 Backend Initialized");
-	ImGui_ImplDX12_Init(mDevice.Get(), FRAME_BUFFER_COUNT,
-		DXGI_FORMAT_R8G8B8A8_UNORM, mImGuiSrvHeap.Get(),
-		mImGuiSrvHeap->GetCPUDescriptorHandleForHeapStart(),
-		mImGuiSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	PrintLog(LogColor::YELLOW, "[ImGui] DX12 Backend Initialized");
-	ImGui::GetIO().Fonts->Build();
-	ImGui_ImplDX12_CreateDeviceObjects();
-	PrintLog(LogColor::YELLOW, "[ImGui] Device Objects Created");
-
+	// [3] 외부 라이브러리 및 매니저 초기화 (Time, Input, Scene)
 	Time::Initialize();
 	PrintLog(LogColor::MAGENTA, "[System] Time Initialized");
 	Input::Initialize();
@@ -122,11 +106,6 @@ void Framework::Update()
 		fpsTimer = 0.0f;
 		frameCount = 0;
 	}
-
-	// ImGui 프레임 시작
-	ImGui_ImplDX12_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
 
 	SceneManager::Update();
 
@@ -257,33 +236,7 @@ void Framework::Render()
 	mCommandList->ResourceBarrier(1, &fbToPresentBarrier);
 	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_PRESENT;
 
-	// [7] ImGui(UI) 렌더링: 백 버퍼를 RENDER_TARGET으로 전환
-	D3D12_RESOURCE_BARRIER imguiBarrier = {};
-	imguiBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	imguiBarrier.Transition.pResource = mFrameBuffers[backBufferIdx].Get();
-	imguiBarrier.Transition.StateBefore = mFrameBufferStates[backBufferIdx];         // PRESENT
-	imguiBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	imguiBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	mCommandList->ResourceBarrier(1, &imguiBarrier);
-	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_RENDER_TARGET;
-
-	mCommandList->OMSetRenderTargets(1, &backBufferHandle, FALSE, nullptr);
-	ImGui::Render();
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mImGuiSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(1, descriptorHeaps);
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
-
-	// [8] 최종 화면 출력 준비 (Present 상태로 전이)
-	D3D12_RESOURCE_BARRIER presentBarrier = {};
-	presentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	presentBarrier.Transition.pResource = mFrameBuffers[backBufferIdx].Get();
-	presentBarrier.Transition.StateBefore = mFrameBufferStates[backBufferIdx];       // RENDER_TARGET
-	presentBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	presentBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	mCommandList->ResourceBarrier(1, &presentBarrier);
-	mFrameBufferStates[backBufferIdx] = D3D12_RESOURCE_STATE_PRESENT;
-
-	// [9] 명령 실행 및 프레임 교체
+	// [7] 명령 실행 및 프레임 교체
 	mCommandList->Close();
 	ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(1, ppCommandLists); // GPU에 명령 전달
@@ -308,13 +261,6 @@ void Framework::Release()
 	// 종료 시 GPU가 작업 중인지 확인하고 해제합니다.
 	WaitForGPU();
 	PrintLog(LogColor::GRAY, "[Release] GPU Wait Complete");
-
-	ImGui_ImplDX12_Shutdown();
-	PrintLog(LogColor::GRAY	, "[Release] ImGui DX12 Shutdown");
-	ImGui_ImplWin32_Shutdown();
-	PrintLog(LogColor::GRAY, "[Release] ImGui Win32 Shutdown");
-	ImGui::DestroyContext();
-	PrintLog(LogColor::GRAY, "[Release] ImGui Context Destroyed");
 
 	SceneManager::Release();
 	PrintLog(LogColor::GRAY, "[Release] SceneManager Released");
@@ -387,12 +333,6 @@ void Framework::OnResize(int width, int height)
 
 	// [7] CommandList 닫기 (Render에서 Reset해서 재사용함)
 	mCommandList->Close();
-
-	// [8] ImGui에 새 DisplaySize 알려주기
-	//     ImGui는 내부적으로 DisplaySize로 투영 행렬을 계산하므로
-	//     명시적으로 갱신해줘야 비율이 맞게 렌더링됨
-	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)mWindowWidth, (float)mWindowHeight);
 
 	PrintLog(LogColor::CYAN, "[OnResize] Resize Complete: "
 		+ std::to_string(mWindowWidth) + "x" + std::to_string(mWindowHeight));
@@ -673,11 +613,3 @@ void Framework::CompileShaders()
 	PrintLog(LogColor::GREEN, "[Shader] Graphics Pipeline State Created (MSAA 4x, CullBack, DepthTest)");
 }
 
-void Framework::CreateImGuiSrvHeap()
-{
-	// ImGui는 텍스처를 그리기 위해 SRV(Shader Resource View)가 필요합니다.
-	D3D12_DESCRIPTOR_HEAP_DESC desc = { D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 0 };
-	HRESULT hr = mDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mImGuiSrvHeap));
-	if (FAILED(hr)) { PrintLog(LogColor::RED, "[ImGui] Failed to create SRV Heap"); exit(1); }
-	PrintLog(LogColor::YELLOW, "[ImGui] SRV Heap Created");
-}
