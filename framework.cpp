@@ -13,8 +13,9 @@ int  Framework::mWindowWidth  = 1280;
 int  Framework::mWindowHeight = 720;
 
 Framework::Framework(int width, int height)
-	: mWindowWidth(width), mWindowHeight(height)
 {
+	mWindowWidth  = width;
+	mWindowHeight = height;
 }
 
 Framework::~Framework() {
