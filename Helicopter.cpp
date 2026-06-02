@@ -33,13 +33,8 @@ void Helicopter::Initialize(ComPtr<ID3D12Device> device)
 void Helicopter::Update(float dt)
 {
 	// --- 마우스로 기체 회전 ---
-	POINT curMousePos;
-	GetCursorPos(&curMousePos);
-	if (mFirstMouse) { mPrevMousePos = curMousePos; mFirstMouse = false; }
-
-	float mouseDeltaX = static_cast<float>(curMousePos.x - mPrevMousePos.x);
-	mHeading += mouseDeltaX * mMouseSensitivity;
-	mPrevMousePos = curMousePos;
+	POINT delta = Input::GetMouseDelta();
+	mHeading += static_cast<float>(delta.x) * mMouseSensitivity;
 
 	// --- WASD 이동 ---
 	const float maxTilt = XMConvertToRadians(18.f);

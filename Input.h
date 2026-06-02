@@ -51,6 +51,10 @@ public:
     static std::wstring GetInputText() { return mInputText; };
     static void ClearInputText() { mInputText.clear(); };
 
+    static void LockCursor(HWND hwnd);
+    static void UnlockCursor();
+    static POINT GetMouseDelta() { return mMouseDelta; }
+
 private:
     static void createKeys();
     static void updateKeys();
@@ -63,4 +67,7 @@ private:
 private:
     static std::vector<Key> Keys;
     static std::wstring mInputText;
+    static bool mCursorLocked;
+    static HWND mLockedHwnd;
+    static POINT mMouseDelta;
 };

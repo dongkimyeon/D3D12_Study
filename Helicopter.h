@@ -46,6 +46,4 @@ private:
     float    mAcceleration = 2.5f;
     XMFLOAT3 mVelocity     = { 0.f, 0.f, 0.f };
     float mMouseSensitivity = 0.003f;
-    POINT mPrevMousePos = {};
-    bool  mFirstMouse   = true;
 };

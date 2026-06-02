@@ -26,6 +26,8 @@ void Level_1_Scene::Initialize()
 	//gizumo->Initialize(Framework::GetDevice());
 	//mGameObjects.push_back(gizumo);
 
+	Input::LockCursor(Framework::GetHwnd());
+
 	mHelicopter = std::make_unique<Helicopter>();
 	mHelicopter->Initialize(Framework::GetDevice());
 
@@ -65,9 +67,10 @@ void Level_1_Scene::Update(float dt)
 		XMVECTOR worldOffset = XMVector3TransformNormal(XMLoadFloat3(&mFpvOffset), R);
 		XMStoreFloat3(&Camera::camPos, XMLoadFloat3(&heliPos) + worldOffset);
 
-		XMVECTOR fwd = XMVector3Normalize(
-			XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), R));
+		XMVECTOR fwd = XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), R));
+		XMVECTOR up  = XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0.f, 1.f, 0.f, 0.f), R));
 		XMStoreFloat3(&Camera::camForward, fwd);
+		XMStoreFloat3(&Camera::camUp, up);
 	}
 	else
 	{
@@ -89,6 +92,7 @@ void Level_1_Scene::Update(float dt)
 		XMVECTOR lookDir = XMVector3Normalize(
 			XMLoadFloat3(&heliPos) - XMLoadFloat3(&Camera::camPos));
 		XMStoreFloat3(&Camera::camForward, lookDir);
+		Camera::camUp = { 0.f, 1.f, 0.f };
 	}
 
 	for (const auto& obj : mGameObjects)
@@ -118,7 +122,7 @@ void Level_1_Scene::Update(float dt)
 
 void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(0, 1, 0, 0));
+	XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(Camera::camUp.x, Camera::camUp.y, Camera::camUp.z, 0));
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 1000.0f);
 
 	BoundingFrustum frustum(proj);
@@ -195,6 +199,8 @@ void Level_1_Scene::ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFru
 
 void Level_1_Scene::Release()
 {
+	Input::UnlockCursor();
+	ClipCursor(nullptr);
 	debugMode = true;
 	for (auto obj : mGameObjects)
 		delete obj;

@@ -2,6 +2,9 @@
 
 std::vector<Input::Key> Input::Keys = {};
 std::wstring Input::mInputText;
+bool  Input::mCursorLocked = false;
+HWND  Input::mLockedHwnd   = nullptr;
+POINT Input::mMouseDelta   = {};
 
 
 static bool lastF1State = false;
@@ -40,6 +43,45 @@ void Input::Initialize()
 void Input::Update()
 {
     updateKeys();
+
+    if (mCursorLocked && mLockedHwnd)
+    {
+        RECT rc;
+        GetClientRect(mLockedHwnd, &rc);
+        POINT center = { (rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2 };
+        ClientToScreen(mLockedHwnd, &center);
+
+        POINT cur;
+        GetCursorPos(&cur);
+        mMouseDelta = { cur.x - center.x, cur.y - center.y };
+        SetCursorPos(center.x, center.y);
+    }
+    else
+    {
+        mMouseDelta = {};
+    }
+}
+
+void Input::LockCursor(HWND hwnd)
+{
+    mLockedHwnd   = hwnd;
+    mCursorLocked = true;
+    mMouseDelta   = {};
+    ShowCursor(FALSE);
+
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+    POINT center = { (rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2 };
+    ClientToScreen(hwnd, &center);
+    SetCursorPos(center.x, center.y);
+}
+
+void Input::UnlockCursor()
+{
+    mCursorLocked = false;
+    mLockedHwnd   = nullptr;
+    mMouseDelta   = {};
+    ShowCursor(TRUE);
 }
 
 void Input::createKeys()
