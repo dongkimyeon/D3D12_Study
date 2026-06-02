@@ -19,8 +19,15 @@ void Tank::Initialize(ComPtr<ID3D12Device> device)
     mBarrel->Initialize(device);
 }
 
+DirectX::BoundingOrientedBox Tank::GetWorldOBB() const
+{
+    return mBody->GetWorldOBB();
+}
+
 void Tank::Update(float dt)
 {
+    if (!IsAlive()) return;
+
     mBody->Update(dt);
     mLid->Update(dt);
     mBarrel->Update(dt);
@@ -51,6 +58,8 @@ void Tank::Update(float dt)
 
 void Tank::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
 {
+    if (!IsAlive()) return;
+
     mBody->Render(commandList, view, proj);
     mLid->Render(commandList, view, proj);
     mBarrel->Render(commandList, view, proj);

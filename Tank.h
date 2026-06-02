@@ -22,6 +22,10 @@ public:
 
     float GetHeading() const { return mHeading; }
 
+    void Hit() { mHitCount++; }
+    bool IsAlive() const { return mHitCount < 5; }
+    DirectX::BoundingOrientedBox GetWorldOBB() const;
+
     // OBJ local space 기준 (scale 독립적)
     XMFLOAT3 mLidOffset      = {  0.f,  67.f,   0.f  };
     XMFLOAT3 mLidRotation    = {  0.f,   0.f,   0.f  };
@@ -35,5 +39,6 @@ private:
     std::unique_ptr<TankLid>    mLid;
     std::unique_ptr<TankBarrel> mBarrel;
 
-    float mHeading = 0.0f;
+    float mHeading   = 0.0f;
+    int   mHitCount  = 0;
 };

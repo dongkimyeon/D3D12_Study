@@ -12,7 +12,8 @@ public:
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj) override;
 
     void Spawn(XMFLOAT3 pos, XMFLOAT3 dir, float speed = 120.f);
-    bool IsDead() const { return mLifetime <= 0.f; }
+    bool IsDead()  const { return mLifetime <= 0.f; }
+    void Kill()          { mLifetime = 0.f; }
 
 private:
     XMFLOAT3 mDirection = {};

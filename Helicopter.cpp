@@ -20,14 +20,17 @@ void Helicopter::Initialize(ComPtr<ID3D12Device> device)
     mBody->Initialize(device);
 	mBody->BakeRotation(-90.f, 0.0f, 0.0f);
 	mBody->BakeRotation(0.0f, -90.f, 0.0f);
+	mBody->SetColor(0.6f, 1.f, 0.6f);
 
     mBlade->Initialize(device);
 	mBlade->BakeRotation(-90.f, 0.0f, 0.0f);
 	mBlade->BakeRotation(0.0f, -90.f, 0.0f);
+	mBlade->SetColor(0.6f, 1.f, 0.6f);
 
     mTail->Initialize(device);
 	mTail->BakeRotation(-90.f, 0.0f, 0.0f);
 	mTail->BakeRotation(0.0f, -90.f, 0.0f);
+	mTail->SetColor(0.6f, 1.f, 0.6f);
 }
 
 void Helicopter::Update(float dt)

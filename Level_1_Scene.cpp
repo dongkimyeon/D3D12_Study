@@ -141,6 +141,24 @@ void Level_1_Scene::Update(float dt)
 
 	for (int i = 0; i < kMissilePoolSize; i++)
 		mMissilePool[i]->Update(dt);
+
+	// 미사일 vs 탱크 충돌
+	for (int i = 0; i < kMissilePoolSize; i++)
+	{
+		if (mMissilePool[i]->IsDead()) continue;
+		DirectX::BoundingBox missileAABB = mMissilePool[i]->GetWorldAABB();
+
+		for (auto& tank : mTanks)
+		{
+			if (!tank->IsAlive()) continue;
+			if (tank->GetWorldOBB().Intersects(missileAABB))
+			{
+				tank->Hit();
+				mMissilePool[i]->Kill();
+				break;
+			}
+		}
+	}
 }
 
 void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)

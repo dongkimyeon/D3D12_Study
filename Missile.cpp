@@ -9,6 +9,7 @@ void Missile::Initialize(ComPtr<ID3D12Device> device)
     GameObject::Initialize(device);
     LoadFromOBJ("sphere.obj", device);
     scale = { 0.3f, 0.3f, 0.3f };
+    SetColor(0.6f, 0.7f, 1.f);
 }
 
 void Missile::Spawn(XMFLOAT3 pos, XMFLOAT3 dir, float speed)

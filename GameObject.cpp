@@ -179,6 +179,19 @@ void GameObject::LoadFromOBJ(const std::string& filename, ComPtr<ID3D12Device> d
 	ibView.SizeInBytes = ibSize;
 	mIBState = D3D12_RESOURCE_STATE_COPY_DEST;
 	mIBDirty = true;
+
+	// 로컬 AABB 1회 캐싱
+	if (!vertices.empty()) {
+		XMFLOAT3 vmin = { FLT_MAX, FLT_MAX, FLT_MAX }, vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+		for (const auto& v : vertices) {
+			vmin.x = std::min(vmin.x, v.x); vmax.x = std::max(vmax.x, v.x);
+			vmin.y = std::min(vmin.y, v.y); vmax.y = std::max(vmax.y, v.y);
+			vmin.z = std::min(vmin.z, v.z); vmax.z = std::max(vmax.z, v.z);
+		}
+		mLocalAABB = DirectX::BoundingBox(
+			{ (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f },
+			{ (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f });
+	}
 }
 
 
@@ -321,19 +334,8 @@ void GameObject::EnsureAABBMesh()
 
 DirectX::BoundingBox GameObject::GetWorldAABB() const
 {
-	if (vertices.empty()) return {};
-	XMFLOAT3 vmin = { FLT_MAX,  FLT_MAX,  FLT_MAX };
-	XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
-	for (const auto& v : vertices) {
-		vmin.x = std::min(vmin.x, v.x); vmax.x = std::max(vmax.x, v.x);
-		vmin.y = std::min(vmin.y, v.y); vmax.y = std::max(vmax.y, v.y);
-		vmin.z = std::min(vmin.z, v.z); vmax.z = std::max(vmax.z, v.z);
-	}
-	DirectX::BoundingBox local(
-		{ (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f },
-		{ (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f });
 	DirectX::BoundingBox world;
-	local.Transform(world, XMLoadFloat4x4(&worldMatrix));
+	mLocalAABB.Transform(world, XMLoadFloat4x4(&worldMatrix));
 	return world;
 }
 
@@ -401,6 +403,14 @@ void GameObject::SetAlpha(float alpha)
 {
 	for (auto& v : vertices)
 		v.a = alpha;
+	UpdateVertexBuffer();
+}
+
+void GameObject::SetColor(float r, float g, float b)
+{
+	for (auto& v : vertices) {
+		v.r = r; v.g = g; v.b = b;
+	}
 	UpdateVertexBuffer();
 }
 

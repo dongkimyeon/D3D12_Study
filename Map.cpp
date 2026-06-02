@@ -35,6 +35,15 @@ void Map::Initialize(ComPtr<ID3D12Device> device)
 		v0.nx = v1.nx = v2.nx = nx;
 		v0.ny = v1.ny = v2.ny = ny;
 		v0.nz = v1.nz = v2.nz = nz;
+
+		// 노멀 방향에 따라 파스텔 색상 부여
+		float r = 0.6f + 0.4f * fabsf(nx);
+		float g = 0.6f + 0.4f * fabsf(ny);
+		float b = 0.6f + 0.4f * fabsf(nz);
+		v0.r = v1.r = v2.r = r;
+		v0.g = v1.g = v2.g = g;
+		v0.b = v1.b = v2.b = b;
+		v0.a = v1.a = v2.a = 1.0f;
 	}
 
 	CreateBuffersFromData(device);

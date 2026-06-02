@@ -40,6 +40,7 @@ public:
 	void BakeRotationX(float angleDeg);
 	void BuildNormalBuffer(ComPtr<ID3D12Device> device);
 	void SetAlpha(float alpha);
+	void SetColor(float r, float g, float b);
 
 	// AABB / OBB 와이어프레임 디버그
 	static bool sShowAABB;
@@ -70,6 +71,7 @@ protected:
 	XMFLOAT3 position;
 	XMFLOAT3 rotation;
 	XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
+	DirectX::BoundingBox mLocalAABB; // 로드 시 1회 계산, 매 프레임 transform만
 	XMFLOAT4 forward_vector = { 0, 0, 1, 0 }; // 초기 전방 벡터 (Z축 방향)
 	XMFLOAT4X4 worldMatrix;
 protected:
