@@ -31,23 +31,21 @@ void Tank::Update(float dt)
     XMMATRIX  R_body    = XMMatrixRotationY(mHeading);
     XMMATRIX  T_body    = XMMatrixTranslation(bodyPos.x, bodyPos.y, bodyPos.z);
 
-    XMMATRIX lid_T = XMMatrixTranslation(mLidOffset.x, mLidOffset.y, mLidOffset.z);
-    XMMATRIX lid_R = XMMatrixRotationRollPitchYaw(
-        XMConvertToRadians(mLidRotation.x),
-        XMConvertToRadians(mLidRotation.y),
-        XMConvertToRadians(mLidRotation.z));
+    // Lid: pitch/roll은 배치 후 바디 원점 기준, yaw는 포탑 중심(배치 후) 기준
+    XMMATRIX lid_T            = XMMatrixTranslation(mLidOffset.x, mLidOffset.y, mLidOffset.z);
+    XMMATRIX lid_R_pitch_roll = XMMatrixRotationRollPitchYaw(XMConvertToRadians(mLidRotation.x), 0.f, XMConvertToRadians(mLidRotation.z));
+    XMMATRIX lid_R_yaw        = XMMatrixRotationY(XMConvertToRadians(mLidRotation.y));
     XMFLOAT4X4 lid_mat;
-    XMStoreFloat4x4(&lid_mat, lid_T * S * lid_R * R_body * T_body);
+    XMStoreFloat4x4(&lid_mat, lid_T * S * lid_R_pitch_roll * lid_R_yaw * R_body * T_body);
     mLid->SetWorldMatrix(lid_mat);
 
+    // Barrel: pitch는 피봇(약실) 기준, yaw는 포탑 중심 기준으로 분리
     XMMATRIX barrel_T_pivot_neg    = XMMatrixTranslation(-mBarrelPivot.x, -mBarrelPivot.y, -mBarrelPivot.z);
     XMMATRIX barrel_T_attach_world = XMMatrixTranslation(tankScale * mBarrelOffset.x, tankScale * mBarrelOffset.y, tankScale * mBarrelOffset.z);
-    XMMATRIX barrel_R              = XMMatrixRotationRollPitchYaw(
-        XMConvertToRadians(mBarrelRotation.x),
-        XMConvertToRadians(mLidRotation.y + mBarrelRotation.y),
-        XMConvertToRadians(mBarrelRotation.z));
+    XMMATRIX barrel_R_pitch        = XMMatrixRotationRollPitchYaw(XMConvertToRadians(mBarrelRotation.x), 0.f, XMConvertToRadians(mBarrelRotation.z));
+    XMMATRIX barrel_R_yaw          = XMMatrixRotationY(XMConvertToRadians(mLidRotation.y + mBarrelRotation.y));
     XMFLOAT4X4 barrel_mat;
-    XMStoreFloat4x4(&barrel_mat, barrel_T_pivot_neg * S * barrel_R * barrel_T_attach_world * R_body * T_body);
+    XMStoreFloat4x4(&barrel_mat, barrel_T_pivot_neg * S * barrel_R_pitch * barrel_T_attach_world * barrel_R_yaw * R_body * T_body);
     mBarrel->SetWorldMatrix(barrel_mat);
 }
 
