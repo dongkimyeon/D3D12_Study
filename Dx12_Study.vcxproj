@@ -150,6 +150,10 @@
     <ClCompile Include="HeliTale.cpp" />
     <ClCompile Include="Helicopter.cpp" />
     <ClCompile Include="Missile.cpp" />
+    <ClCompile Include="Tank.cpp" />
+    <ClCompile Include="TankBody.cpp" />
+    <ClCompile Include="TankLid.cpp" />
+    <ClCompile Include="TankBarrel.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -191,6 +195,10 @@
     <ClInclude Include="HeliTale.h" />
     <ClInclude Include="Helicopter.h" />
     <ClInclude Include="Missile.h" />
+    <ClInclude Include="Tank.h" />
+    <ClInclude Include="TankBody.h" />
+    <ClInclude Include="TankLid.h" />
+    <ClInclude Include="TankBarrel.h" />
     <ClInclude Include="imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="imgui\imconfig.h" />

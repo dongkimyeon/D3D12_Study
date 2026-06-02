@@ -2,6 +2,7 @@
 #include "Scene.h"
 #include "GameObject.h"
 #include "Helicopter.h"
+#include "Tank.h"
 #include "Map.h"
 #include "Missile.h"
 
@@ -21,7 +22,8 @@ private:
     void ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFrustum);
 
     std::vector<GameObject*> mGameObjects;
-	std::unique_ptr<Helicopter> mHelicopter;
+	std::unique_ptr<Helicopter>        mHelicopter;
+	std::vector<std::unique_ptr<Tank>> mTanks;
 
     Map* mMap = nullptr;
     float mMapSpacingX = 69.0f * 2.0f;

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <cmath>
 
 bool OBJLoader::Load(const std::string& filename,
     std::vector<OBJVertex>& vertices,
@@ -85,6 +86,29 @@ bool OBJLoader::Load(const std::string& filename,
 
         vertices.push_back(vertex);
         indices.push_back(static_cast<uint32_t>(i));
+    }
+
+    // OBJ에 노멀 데이터가 없으면 삼각형마다 면 노멀을 계산
+    if (normIndices.empty()) {
+        for (size_t i = 0; i + 2 < vertices.size(); i += 3) {
+            float ax = vertices[i + 1].x - vertices[i].x;
+            float ay = vertices[i + 1].y - vertices[i].y;
+            float az = vertices[i + 1].z - vertices[i].z;
+            float bx = vertices[i + 2].x - vertices[i].x;
+            float by = vertices[i + 2].y - vertices[i].y;
+            float bz = vertices[i + 2].z - vertices[i].z;
+
+            float nx = ay * bz - az * by;
+            float ny = az * bx - ax * bz;
+            float nz = ax * by - ay * bx;
+
+            float len = sqrtf(nx * nx + ny * ny + nz * nz);
+            if (len > 1e-6f) { nx /= len; ny /= len; nz /= len; }
+
+            vertices[i].nx     = nx; vertices[i].ny     = ny; vertices[i].nz     = nz;
+            vertices[i + 1].nx = nx; vertices[i + 1].ny = ny; vertices[i + 1].nz = nz;
+            vertices[i + 2].nx = nx; vertices[i + 2].ny = ny; vertices[i + 2].nz = nz;
+        }
     }
 
 	PrintLog(LogColor::BLUE, "[OBJLoader] Loaded " + std::to_string(vertices.size()) + " vertices, " +

@@ -54,6 +54,7 @@ void GameObject::CreateInstanceBuffer(ComPtr<ID3D12Device> device, UINT count)
 	mInstanceCount = count;
 }
 
+
 void GameObject::Update(float dt)
 {
 	// 1. 현재 프레임의 SRT(Scale, Rotation, Translation) 행렬을 생성합니다.

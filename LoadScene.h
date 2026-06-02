@@ -12,5 +12,5 @@ void LoadScenes()
 	SceneManager::CreateScene<TitleScene>(L"TitleScene");
 	SceneManager::CreateScene<MenuScene>(L"MenuScene");
 
-    SceneManager::LoadScene(L"TitleScene");
+    SceneManager::LoadScene(L"Level_1");
 }

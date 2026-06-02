@@ -20,7 +20,7 @@ enum class eKeyCode
     Z, X, C, V, B, N, M,
     Left, Right, Down, Up,
     LButton, MButton, RButton, SPACE, ESC, BACK,
-    SHIFT, F1, MINUS, EQUAL, F9,
+    SHIFT, F1, MINUS, EQUAL, F9, F5,
     End,
 	
 };
@@ -53,6 +53,7 @@ public:
 
     static void LockCursor(HWND hwnd);
     static void UnlockCursor();
+    static bool IsCursorLocked() { return mCursorLocked; }
     static POINT GetMouseDelta() { return mMouseDelta; }
 
 private:

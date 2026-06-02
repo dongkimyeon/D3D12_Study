@@ -22,14 +22,25 @@ void Level_1_Scene::Initialize()
 
 	Camera::SetPosition(0.f, 5.f, -15.f);
 
-	//GameObject* gizumo = new Gizumo();
-	//gizumo->Initialize(Framework::GetDevice());
-	//mGameObjects.push_back(gizumo);
-
 	Input::LockCursor(Framework::GetHwnd());
 
 	mHelicopter = std::make_unique<Helicopter>();
 	mHelicopter->Initialize(Framework::GetDevice());
+
+	static const XMFLOAT3 kTankPositions[15] = {
+		{   0.f, 0.f,  40.f }, {  30.f, 0.f,  40.f }, { -30.f, 0.f,  40.f },
+		{  60.f, 0.f,  80.f }, { -60.f, 0.f,  80.f }, {   0.f, 0.f,  80.f },
+		{  90.f, 0.f, 120.f }, { -90.f, 0.f, 120.f }, {  30.f, 0.f, 120.f },
+		{ -30.f, 0.f, 120.f }, {  60.f, 0.f, 160.f }, { -60.f, 0.f, 160.f },
+		{   0.f, 0.f, 160.f }, {  90.f, 0.f, 200.f }, { -90.f, 0.f, 200.f },
+	};
+	mTanks.resize(15);
+	for (int i = 0; i < 15; i++)
+	{
+		mTanks[i] = std::make_unique<Tank>();
+		mTanks[i]->Initialize(Framework::GetDevice());
+		mTanks[i]->SetPosition(kTankPositions[i]);
+	}
 
 	mMap = new Map();
 	mMap->Initialize(Framework::GetDevice());
@@ -41,9 +52,6 @@ void Level_1_Scene::Initialize()
 		mMissilePool[i] = new Missile();
 		mMissilePool[i]->Initialize(Framework::GetDevice());
 	}
-
-
-
 }
 
 void Level_1_Scene::Update(float dt)
@@ -54,6 +62,14 @@ void Level_1_Scene::Update(float dt)
 	if (Input::GetKeyDown(eKeyCode::V))
 		mFirstPerson = !mFirstPerson;
 
+	if (Input::GetKeyDown(eKeyCode::F5))
+	{
+		if (Input::IsCursorLocked())
+			Input::UnlockCursor();
+		else
+			Input::LockCursor(Framework::GetHwnd());
+	}
+
 	mHelicopter->Update(dt);
 
 	XMFLOAT3 heliPos = mHelicopter->GetPosition();
@@ -61,7 +77,6 @@ void Level_1_Scene::Update(float dt)
 
 	if (mFirstPerson)
 	{
-		// 1인칭: 헬기 로컬 공간 기준 오프셋 → 월드 공간으로 변환
 		XMMATRIX R = XMMatrixRotationRollPitchYaw(
 			mHelicopter->GetTiltPitch(), heading, mHelicopter->GetTiltRoll());
 		XMVECTOR worldOffset = XMVector3TransformNormal(XMLoadFloat3(&mFpvOffset), R);
@@ -74,7 +89,6 @@ void Level_1_Scene::Update(float dt)
 	}
 	else
 	{
-		// 3인칭: 헬기 뒤쪽 + 위쪽 팔로우
 		const float camDist   = 15.f;
 		const float camHeight =  5.f;
 		XMFLOAT3 targetCamPos = {
@@ -95,10 +109,19 @@ void Level_1_Scene::Update(float dt)
 		Camera::camUp = { 0.f, 1.f, 0.f };
 	}
 
+	for (auto& tank : mTanks)
+	{
+		tank->mLidOffset      = mTanks[0]->mLidOffset;
+		tank->mLidRotation    = mTanks[0]->mLidRotation;
+		tank->mBarrelOffset   = mTanks[0]->mBarrelOffset;
+		tank->mBarrelPivot    = mTanks[0]->mBarrelPivot;
+		tank->mBarrelRotation = mTanks[0]->mBarrelRotation;
+		tank->Update(dt);
+	}
+
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
 
-	// 미사일 발사
 	if (Input::GetKeyDown(eKeyCode::LButton))
 	{
 		XMFLOAT3 pos1, pos2, dir;
@@ -143,6 +166,9 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 	mHelicopter->Render(commandList, view, proj);
 
+	for (auto& tank : mTanks)
+		tank->Render(commandList, view, proj);
+
 	for (int i = 0; i < kMissilePoolSize; i++)
 		mMissilePool[i]->Render(commandList, view, proj);
 
@@ -155,6 +181,13 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::Text("Missile Offsets");
 	ImGui::DragFloat3("Offset 1", &mHelicopter->mMissileOffset1.x, 0.05f);
 	ImGui::DragFloat3("Offset 2", &mHelicopter->mMissileOffset2.x, 0.05f);
+	ImGui::Separator();
+	ImGui::Text("Tank Parts (Body 기준)");
+	ImGui::DragFloat3("Lid Offset",      &mTanks[0]->mLidOffset.x,      1.0f);
+	ImGui::DragFloat3("Lid Rotation",    &mTanks[0]->mLidRotation.x,    1.0f);
+	ImGui::DragFloat3("Barrel Offset",   &mTanks[0]->mBarrelOffset.x,   1.0f);
+	ImGui::DragFloat3("Barrel Pivot",    &mTanks[0]->mBarrelPivot.x,    1.0f);
+	ImGui::DragFloat3("Barrel Rotation", &mTanks[0]->mBarrelRotation.x, 1.0f);
 	ImGui::End();
 }
 
@@ -207,6 +240,7 @@ void Level_1_Scene::Release()
 	mGameObjects.clear();
 	mMap = nullptr;
 	mHelicopter.reset();
+	mTanks.clear();
 	mAllTileMatrices.clear();
 
 	for (int i = 0; i < kMissilePoolSize; i++)
