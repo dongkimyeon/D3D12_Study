@@ -77,7 +77,7 @@ void MenuScene::Update(float dt)
 void MenuScene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(0, 1, 0, 0));
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 100.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, (float)Framework::GetWidth() / (float)Framework::GetHeight(), 0.1f, 100.0f);
 
 	for (auto obj : mGameObjects)
 	{

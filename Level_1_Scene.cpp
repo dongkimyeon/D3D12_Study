@@ -146,7 +146,7 @@ void Level_1_Scene::Update(float dt)
 void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&Camera::camPos), XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0), XMVectorSet(Camera::camUp.x, Camera::camUp.y, Camera::camUp.z, 0));
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1280.0f / 720.0f, 0.1f, 1000.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, (float)Framework::GetWidth() / (float)Framework::GetHeight(), 0.1f, 1000.0f);
 
 	BoundingFrustum frustum(proj);
 	BoundingFrustum worldFrustum;

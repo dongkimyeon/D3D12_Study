@@ -21,7 +21,9 @@ public:
 
     // 씬 등 외부에서 사용할 Device 정적 접근자 (DX12의 핵심 객체)
     static ComPtr<ID3D12Device> GetDevice() { return mDevice; }
-    static HWND GetHwnd() { return mHwnd; }
+    static HWND GetHwnd()   { return mHwnd; }
+    static int  GetWidth()  { return mWindowWidth; }
+    static int  GetHeight() { return mWindowHeight; }
 
 private:
     void WaitForGPU();                 // GPU가 명령 처리를 마칠 때까지 대기 (동기화)
@@ -40,8 +42,8 @@ private:
     void Render();                     // 매 프레임 화면 그리기
 	
 private:
-    int mWindowWidth;
-    int mWindowHeight;
+    static int mWindowWidth;
+    static int mWindowHeight;
     bool isRunning = false;
     static HWND mHwnd;
 	BOOL isFullScreen = false;

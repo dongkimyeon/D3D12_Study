@@ -5,8 +5,11 @@
 #include <DirectXCollision.h>
 
 
-inline bool PickAABB(const DirectX::BoundingBox& worldAABB, float screenW = 1280.f, float screenH = 720.f)
+inline bool PickAABB(const DirectX::BoundingBox& worldAABB)
 {
+    float screenW = (float)Framework::GetWidth();
+    float screenH = (float)Framework::GetHeight();
+
     POINT pt;
     GetCursorPos(&pt);
     ScreenToClient(Framework::GetHwnd(), &pt);

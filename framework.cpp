@@ -8,7 +8,9 @@
 
 // DirectX 12 장치(Device)는 어플리케이션 전체에서 공유되므로 정적 멤버로 관리합니다.
 ComPtr<ID3D12Device> Framework::mDevice = nullptr;
-HWND Framework::mHwnd = nullptr;
+HWND Framework::mHwnd   = nullptr;
+int  Framework::mWindowWidth  = 1280;
+int  Framework::mWindowHeight = 720;
 
 Framework::Framework(int width, int height)
 	: mWindowWidth(width), mWindowHeight(height)
