@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "GameObject.h"
 #include "framework.h"
+#include "Camera.h"
+#include "SceneLights.h"
 
 bool                     GameObject::sShowAABB = false;
 ComPtr<ID3D12Resource>   GameObject::sAABBVB;
@@ -112,6 +114,16 @@ void GameObject::Render(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX
 	XMFLOAT4X4 vpFloat;
 	XMStoreFloat4x4(&vpFloat, XMMatrixTranspose(view * proj));
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpFloat.m[0][0], 0);
+	commandList->SetGraphicsRoot32BitConstants(0,  3, &Camera::camPos.x, 16);
+	XMFLOAT4 plPosRange  = { SceneLights::pointPos.x, SceneLights::pointPos.y, SceneLights::pointPos.z, SceneLights::pointRange };
+	XMFLOAT4 plColIntens = { SceneLights::pointColor.x, SceneLights::pointColor.y, SceneLights::pointColor.z, SceneLights::pointIntensity };
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &plPosRange,  20);
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &plColIntens, 24);
+	XMFLOAT4 dirDir   = { SceneLights::dirLightDir.x, SceneLights::dirLightDir.y, SceneLights::dirLightDir.z, 0.f };
+	XMFLOAT4 dirColIn = { SceneLights::dirLightColor.x, SceneLights::dirLightColor.y, SceneLights::dirLightColor.z, SceneLights::dirLightIntensity };
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &dirDir,   28);
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &dirColIn, 32);
+	commandList->SetGraphicsRoot32BitConstants(0, 1, &SceneLights::ambientIntensity, 36);
 
 	commandList->IASetVertexBuffers(0, 1, &vbView);
 	commandList->IASetVertexBuffers(1, 1, &mInstanceBufView);
@@ -391,6 +403,16 @@ void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMA
 	mAABBInstBuf->Unmap(0, nullptr);
 
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &vpFloat.m[0][0], 0);
+	commandList->SetGraphicsRoot32BitConstants(0,  3, &Camera::camPos.x, 16);
+	XMFLOAT4 plPosRange  = { SceneLights::pointPos.x, SceneLights::pointPos.y, SceneLights::pointPos.z, SceneLights::pointRange };
+	XMFLOAT4 plColIntens = { SceneLights::pointColor.x, SceneLights::pointColor.y, SceneLights::pointColor.z, SceneLights::pointIntensity };
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &plPosRange,  20);
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &plColIntens, 24);
+	XMFLOAT4 dirDir   = { SceneLights::dirLightDir.x, SceneLights::dirLightDir.y, SceneLights::dirLightDir.z, 0.f };
+	XMFLOAT4 dirColIn = { SceneLights::dirLightColor.x, SceneLights::dirLightColor.y, SceneLights::dirLightColor.z, SceneLights::dirLightIntensity };
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &dirDir,   28);
+	commandList->SetGraphicsRoot32BitConstants(0, 4, &dirColIn, 32);
+	commandList->SetGraphicsRoot32BitConstants(0, 1, &SceneLights::ambientIntensity, 36);
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	commandList->IASetVertexBuffers(0, 1, &sAABBVbView);
 	commandList->IASetVertexBuffers(1, 1, &mAABBInstView);

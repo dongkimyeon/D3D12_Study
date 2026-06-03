@@ -615,7 +615,7 @@ void Framework::CompileShaders()
 	D3D12_ROOT_PARAMETER rootParam = {};
 	rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 	rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	rootParam.Constants.Num32BitValues = 16; // viewProj(16)
+	rootParam.Constants.Num32BitValues = 40; // viewProj(16) + camPos+pad(4) + pointLight(8) + dirLight(8) + ambient+pad(4)
 	rootParam.Constants.ShaderRegister = 0;
 
 	D3D12_ROOT_SIGNATURE_DESC sigDesc = { 1, &rootParam, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT };

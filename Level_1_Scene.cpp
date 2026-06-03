@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "Map.h"
 #include "SceneManager.h"
+#include "SceneLights.h"
 
 extern bool debugMode;
 
@@ -78,6 +79,13 @@ void Level_1_Scene::Update(float dt)
 	}
 
 	mHelicopter->Update(dt);
+
+	// 포인트 라이트: 헬기 앞쪽에 고정
+	{
+		XMFLOAT3 hp = mHelicopter->GetPosition();
+		float     hd = mHelicopter->GetHeading();
+		SceneLights::pointPos = { hp.x + sinf(hd) * 5.f, hp.y, hp.z + cosf(hd) * 5.f };
+	}
 
 	XMFLOAT3 heliPos = mHelicopter->GetPosition();
 	float heading    = mHelicopter->GetHeading();
@@ -224,6 +232,17 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::Text("Missile Offsets");
 	ImGui::DragFloat3("Offset 1", &mHelicopter->mMissileOffset1.x, 0.05f);
 	ImGui::DragFloat3("Offset 2", &mHelicopter->mMissileOffset2.x, 0.05f);
+	ImGui::Separator();
+	ImGui::Text("Directional Light");
+	ImGui::DragFloat3("Dir",           &SceneLights::dirLightDir.x,       0.01f);
+	ImGui::ColorEdit3("Dir Color",     &SceneLights::dirLightColor.x);
+	ImGui::DragFloat ("Dir Intensity", &SceneLights::dirLightIntensity,   0.01f, 0.f, 5.f);
+	ImGui::DragFloat ("Ambient",       &SceneLights::ambientIntensity,    0.01f, 0.f, 1.f);
+	ImGui::Separator();
+	ImGui::Text("Point Light (Heli Front)");
+	ImGui::DragFloat ("Range",         &SceneLights::pointRange,          0.5f,  1.f, 200.f);
+	ImGui::DragFloat ("Intensity",     &SceneLights::pointIntensity,      0.05f, 0.f, 10.f);
+	ImGui::ColorEdit3("Point Color",   &SceneLights::pointColor.x);
 	ImGui::Separator();
 	ImGui::Text("Tank Parts (all shared)");
 	ImGui::DragFloat3("Lid Offset",      &mTanks[0]->mLidOffset.x,      1.0f);
