@@ -3,6 +3,9 @@
 #include "GameObject.h"
 #include "Helicopter.h"
 #include "Tank.h"
+#include "TankBody.h"
+#include "TankLid.h"
+#include "TankBarrel.h"
 #include "Map.h"
 #include "Missile.h"
 
@@ -22,8 +25,12 @@ private:
     void ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFrustum);
 
     std::vector<GameObject*> mGameObjects;
-	std::unique_ptr<Helicopter>        mHelicopter;
-	std::vector<std::unique_ptr<Tank>> mTanks;
+    std::unique_ptr<Helicopter>        mHelicopter;
+    std::vector<std::unique_ptr<Tank>> mTanks;
+
+    std::unique_ptr<TankBody>   mTankBodyRenderer;
+    std::unique_ptr<TankLid>    mTankLidRenderer;
+    std::unique_ptr<TankBarrel> mTankBarrelRenderer;
 
     Map* mMap = nullptr;
     float mMapSpacingX = 69.0f * 2.0f;
@@ -35,6 +42,7 @@ private:
     Missile* mMissilePool[kMissilePoolSize] = {};
     bool mFireFromLeft = true;
 
-    bool     mFirstPerson = false;
-    XMFLOAT3 mFpvOffset   = { 0.f, -0.780f, 5.35f };
+    bool     mFirstPerson  = false;
+    XMFLOAT3 mFpvOffset    = { 0.f, -0.780f, 5.35f };
+    int      mSelectedTank = 0;
 };

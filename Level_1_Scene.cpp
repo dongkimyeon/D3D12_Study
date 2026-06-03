@@ -27,6 +27,14 @@ void Level_1_Scene::Initialize()
 	mHelicopter = std::make_unique<Helicopter>();
 	mHelicopter->Initialize(Framework::GetDevice());
 
+	// 탱크 렌더러: 메쉬 1회 로드, 인스턴스 버퍼 15개 분 할당
+	mTankBodyRenderer   = std::make_unique<TankBody>();
+	mTankLidRenderer    = std::make_unique<TankLid>();
+	mTankBarrelRenderer = std::make_unique<TankBarrel>();
+	mTankBodyRenderer->Initialize(Framework::GetDevice(), 15);
+	mTankLidRenderer->Initialize(Framework::GetDevice(), 15);
+	mTankBarrelRenderer->Initialize(Framework::GetDevice(), 15);
+
 	static const XMFLOAT3 kTankPositions[15] = {
 		{   0.f, 0.f,  40.f }, {  30.f, 0.f,  40.f }, { -30.f, 0.f,  40.f },
 		{  60.f, 0.f,  80.f }, { -60.f, 0.f,  80.f }, {   0.f, 0.f,  80.f },
@@ -38,7 +46,6 @@ void Level_1_Scene::Initialize()
 	for (int i = 0; i < 15; i++)
 	{
 		mTanks[i] = std::make_unique<Tank>();
-		mTanks[i]->Initialize(Framework::GetDevice());
 		mTanks[i]->SetPosition(kTankPositions[i]);
 	}
 
@@ -109,15 +116,31 @@ void Level_1_Scene::Update(float dt)
 		Camera::camUp = { 0.f, 1.f, 0.f };
 	}
 
+	// 탱크 업데이트 & 인스턴스 행렬 수집
+	std::vector<XMFLOAT4X4> bodyMats, lidMats, barrelMats;
+	bodyMats.reserve(15); lidMats.reserve(15); barrelMats.reserve(15);
+
 	for (auto& tank : mTanks)
 	{
+		// lid/barrel 파라미터는 전역 공유 (모든 탱크 동일 모델)
 		tank->mLidOffset      = mTanks[0]->mLidOffset;
 		tank->mLidRotation    = mTanks[0]->mLidRotation;
 		tank->mBarrelOffset   = mTanks[0]->mBarrelOffset;
 		tank->mBarrelPivot    = mTanks[0]->mBarrelPivot;
 		tank->mBarrelRotation = mTanks[0]->mBarrelRotation;
 		tank->Update(dt);
+
+		if (tank->IsAlive())
+		{
+			bodyMats.push_back(tank->mBodyMatrix);
+			lidMats.push_back(tank->mLidMatrix);
+			barrelMats.push_back(tank->mBarrelMatrix);
+		}
 	}
+
+	mTankBodyRenderer->UpdateInstances(bodyMats);
+	mTankLidRenderer->UpdateInstances(lidMats);
+	mTankBarrelRenderer->UpdateInstances(barrelMats);
 
 	for (const auto& obj : mGameObjects)
 		obj->Update(dt);
@@ -184,8 +207,10 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 	mHelicopter->Render(commandList, view, proj);
 
-	for (auto& tank : mTanks)
-		tank->Render(commandList, view, proj);
+	mTankBodyRenderer->Render(commandList, view, proj);
+	mTankLidRenderer->Render(commandList, view, proj);
+	mTankBarrelRenderer->Render(commandList, view, proj);
+	mTankBodyRenderer->RenderOBBs(commandList, view, proj);
 
 	for (int i = 0; i < kMissilePoolSize; i++)
 		mMissilePool[i]->Render(commandList, view, proj);
@@ -200,12 +225,37 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	ImGui::DragFloat3("Offset 1", &mHelicopter->mMissileOffset1.x, 0.05f);
 	ImGui::DragFloat3("Offset 2", &mHelicopter->mMissileOffset2.x, 0.05f);
 	ImGui::Separator();
-	ImGui::Text("Tank Parts (Body 기준)");
+	ImGui::Text("Tank Parts (all shared)");
 	ImGui::DragFloat3("Lid Offset",      &mTanks[0]->mLidOffset.x,      1.0f);
 	ImGui::DragFloat3("Lid Rotation",    &mTanks[0]->mLidRotation.x,    1.0f);
 	ImGui::DragFloat3("Barrel Offset",   &mTanks[0]->mBarrelOffset.x,   1.0f);
 	ImGui::DragFloat3("Barrel Pivot",    &mTanks[0]->mBarrelPivot.x,    1.0f);
 	ImGui::DragFloat3("Barrel Rotation", &mTanks[0]->mBarrelRotation.x, 1.0f);
+	ImGui::End();
+
+	ImGui::Begin("Tank Control");
+	ImGui::SliderInt("Tank Index", &mSelectedTank, 0, (int)mTanks.size() - 1);
+	ImGui::Separator();
+
+	auto& t = mTanks[mSelectedTank];
+	ImGui::Text("Tank %d - %s", mSelectedTank, t->IsAlive() ? "Alive" : "Dead");
+
+	XMFLOAT3 pos = t->GetPosition();
+	if (ImGui::DragFloat3("Position", &pos.x, 0.5f))
+		t->SetPosition(pos);
+
+	XMFLOAT3 rotDeg = {
+		XMConvertToDegrees(t->mPitch),
+		XMConvertToDegrees(t->mHeading),
+		XMConvertToDegrees(t->mRoll)
+	};
+	if (ImGui::DragFloat3("Rotation (deg)", &rotDeg.x, 1.0f))
+	{
+		t->mPitch   = XMConvertToRadians(rotDeg.x);
+		t->mHeading = XMConvertToRadians(rotDeg.y);
+		t->mRoll    = XMConvertToRadians(rotDeg.z);
+	}
+
 	ImGui::End();
 }
 
@@ -259,6 +309,9 @@ void Level_1_Scene::Release()
 	mMap = nullptr;
 	mHelicopter.reset();
 	mTanks.clear();
+	mTankBodyRenderer.reset();
+	mTankLidRenderer.reset();
+	mTankBarrelRenderer.reset();
 	mAllTileMatrices.clear();
 
 	for (int i = 0; i < kMissilePoolSize; i++)
