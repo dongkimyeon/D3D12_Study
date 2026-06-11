@@ -25,11 +25,7 @@ public:
 private:
     std::vector<GameObject*> mGameObjects;
     std::unique_ptr<Helicopter>        mHelicopter;
-    std::vector<std::unique_ptr<Tank>> mTanks;
 
-    std::unique_ptr<TankBody>   mTankBodyRenderer;
-    std::unique_ptr<TankLid>    mTankLidRenderer;
-    std::unique_ptr<TankBarrel> mTankBarrelRenderer;
 	std::unique_ptr<Terrain>    mTerrain;	
     Ring*    mRing    = nullptr;
     Plane*   mPlane   = nullptr;

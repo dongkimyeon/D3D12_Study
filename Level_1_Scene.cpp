@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "framework.h"
 #include "Level_1_Scene.h"
-#include "Gizumo.h"
+
 #include "Camera.h"
 #include "SceneManager.h"
 
@@ -31,13 +31,6 @@ void Level_1_Scene::Initialize()
 	mTerrain->Initialize(Framework::GetDevice());
 	mTerrain->SetScale(3.0f, 3.0f, 3.0f);
 
-    // 탱크 렌더러: 메쉬 1회 로드, 인스턴스 버퍼 15개 분 할당
-    mTankBodyRenderer   = std::make_unique<TankBody>();
-    mTankLidRenderer    = std::make_unique<TankLid>();
-    mTankBarrelRenderer = std::make_unique<TankBarrel>();
-    mTankBodyRenderer->Initialize(Framework::GetDevice(), 15);
-    mTankLidRenderer->Initialize(Framework::GetDevice(), 15);
-    mTankBarrelRenderer->Initialize(Framework::GetDevice(), 15);
 
     static const float kTankXZ[15][2] = {
         {   0.f,  40.f }, {  30.f,  40.f }, { -30.f,  40.f },
@@ -46,13 +39,8 @@ void Level_1_Scene::Initialize()
         { -30.f, 120.f }, {  60.f, 160.f }, { -60.f, 160.f },
         {   0.f, 160.f }, {  90.f, 200.f }, { -90.f, 200.f },
     };
-    mTanks.resize(15);
-    for (int i = 0; i < 15; i++)
-    {
-        mTanks[i] = std::make_unique<Tank>();
-        float groundY = mTerrain->GetHeightAt(kTankXZ[i][0], kTankXZ[i][1]);
-        mTanks[i]->SetPosition(kTankXZ[i][0], groundY, kTankXZ[i][1]);
-    }
+
+ 
 
     mRing = new Ring();
     mRing->Initialize(Framework::GetDevice());
@@ -131,30 +119,8 @@ void Level_1_Scene::Update(float dt)
         Camera::camUp = { 0.f, 1.f, 0.f };
     }
 
-    // 탱크 업데이트 & 인스턴스 행렬 수집
-    std::vector<XMFLOAT4X4> bodyMats, lidMats, barrelMats;
-    bodyMats.reserve(15); lidMats.reserve(15); barrelMats.reserve(15);
+ 
 
-    for (auto& tank : mTanks)
-    {
-        tank->mLidOffset      = mTanks[0]->mLidOffset;
-        tank->mLidRotation    = mTanks[0]->mLidRotation;
-        tank->mBarrelOffset   = mTanks[0]->mBarrelOffset;
-        tank->mBarrelPivot    = mTanks[0]->mBarrelPivot;
-        tank->mBarrelRotation = mTanks[0]->mBarrelRotation;
-        tank->Update(dt);
-
-        if (tank->IsAlive())
-        {
-            bodyMats.push_back(tank->mBodyMatrix);
-            lidMats.push_back(tank->mLidMatrix);
-            barrelMats.push_back(tank->mBarrelMatrix);
-        }
-    }
-
-    mTankBodyRenderer->UpdateInstances(bodyMats);
-    mTankLidRenderer->UpdateInstances(lidMats);
-    mTankBarrelRenderer->UpdateInstances(barrelMats);
 
     for (const auto& obj : mGameObjects)
         obj->Update(dt);
@@ -180,24 +146,6 @@ void Level_1_Scene::Update(float dt)
     for (int i = 0; i < kMissilePoolSize; i++)
         mMissilePool[i]->Update(dt);
 
-    // 미사일 vs 탱크 충돌
-    for (int i = 0; i < kMissilePoolSize; i++)
-    {
-        if (mMissilePool[i]->IsDead()) continue;
-        DirectX::BoundingBox missileAABB = mMissilePool[i]->GetWorldAABB();
-
-        for (auto& tank : mTanks)
-        {
-            if (!tank->IsAlive()) continue;
-            if (tank->GetWorldOBB().Intersects(missileAABB))
-            {
-                tank->Hit();
-                mMissilePool[i]->Kill();
-                break;
-            }
-        }
-    }
-
     // Ring 충돌 -> Level 2 전환
     if (mRing && mRing->CheckCollision(heliPos))
         SceneManager::LoadScene(L"Level_2");
@@ -218,11 +166,6 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 
     mHelicopter->Render(commandList, view, proj);
 	mTerrain->Render(commandList, view, proj);
-    mTankBodyRenderer->Render(commandList, view, proj);
-    mTankLidRenderer->Render(commandList, view, proj);
-    mTankBarrelRenderer->Render(commandList, view, proj);
-    mTankBodyRenderer->RenderOBBs(commandList, view, proj);
-
     for (int i = 0; i < kMissilePoolSize; i++)
         mMissilePool[i]->Render(commandList, view, proj);
 
@@ -259,11 +202,6 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     ImGui::DragFloat3("Missile L", &mHelicopter->mMissileOffset1.x, 0.05f);
     ImGui::DragFloat3("Missile R", &mHelicopter->mMissileOffset2.x, 0.05f);
     ImGui::Separator();
-    ImGui::DragFloat3("Lid Offset",      &mTanks[0]->mLidOffset.x,      1.0f);
-    ImGui::DragFloat3("Lid Rotation",    &mTanks[0]->mLidRotation.x,    1.0f);
-    ImGui::DragFloat3("Barrel Offset",   &mTanks[0]->mBarrelOffset.x,   1.0f);
-    ImGui::DragFloat3("Barrel Pivot",    &mTanks[0]->mBarrelPivot.x,    1.0f);
-    ImGui::DragFloat3("Barrel Rotation", &mTanks[0]->mBarrelRotation.x, 1.0f);
     ImGui::End();
 }
 
@@ -278,11 +216,7 @@ void Level_1_Scene::Release()
     mRing  = nullptr;
     mPlane = nullptr;
     mHelicopter.reset();
-    mTanks.clear();
-    mTankBodyRenderer.reset();
-    mTankLidRenderer.reset();
-    mTankBarrelRenderer.reset();
-
+ 
     for (int i = 0; i < kMissilePoolSize; i++)
     {
         delete mMissilePool[i];
