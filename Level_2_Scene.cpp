@@ -7,45 +7,55 @@
 
 void Level_2_Scene::Initialize()
 {
-    Camera::SetPosition(0.f, 10.f, -20.f);
-    Camera::camForward = { 0.f, 0.f, 1.f };
-    Camera::camUp      = { 0.f, 1.f, 0.f };
+	Camera::SetPosition(0.f, 10.f, -20.f);
+	Camera::camForward = { 0.f, 0.f, 1.f };
+	Camera::camUp = { 0.f, 1.f, 0.f };
+
+	auto device = Framework::GetDevice();
 
 	mTerrain = std::make_unique<Terrain>();
-	mTerrain->Initialize(Framework::GetDevice());
-	
-	// 탱크 렌더러: 메쉬 1회 로드, 인스턴스 버퍼 15개 분 할당
+	mTerrain->Initialize(device);
+
+	size_t numTanks = 15;
+
 	mTankBodyRenderer = std::make_unique<TankBody>();
 	mTankLidRenderer = std::make_unique<TankLid>();
 	mTankBarrelRenderer = std::make_unique<TankBarrel>();
-	mTankBodyRenderer->Initialize(Framework::GetDevice(), 15);
-	mTankLidRenderer->Initialize(Framework::GetDevice(), 15);
-	mTankBarrelRenderer->Initialize(Framework::GetDevice(), 15);
 
-	static const float kTankXZ[15][2] = {
-	   {   0.f,  40.f }, {  30.f,  40.f }, { -30.f,  40.f },
-	   {  60.f,  80.f }, { -60.f,  80.f }, {   0.f,  80.f },
-	   {  90.f, 120.f }, { -90.f, 120.f }, {  30.f, 120.f },
-	   { -30.f, 120.f }, {  60.f, 160.f }, { -60.f, 160.f },
-	   {   0.f, 160.f }, {  90.f, 200.f }, { -90.f, 200.f },
-	};
+	mTankBodyRenderer->Initialize(device, numTanks);
+	mTankLidRenderer->Initialize(device, numTanks);
+	mTankBarrelRenderer->Initialize(device, numTanks);
 
-	mTanks.resize(15);
-	for (int i = 0; i < 15; i++)
+	
+	std::random_device rd;  
+	std::mt19937 gen(rd());
+
+	std::uniform_real_distribution<float> distX(-100.f, 100.f);
+	std::uniform_real_distribution<float> distZ(40.f, 250.f);
+
+	mTanks.reserve(numTanks);
+
+	for (size_t i = 0; i < numTanks; ++i)
 	{
-		mTanks[i] = std::make_unique<Tank>();
-		float groundY = mTerrain->GetHeightAt(kTankXZ[i][0], kTankXZ[i][1]);
-		mTanks[i]->SetPosition(kTankXZ[i][0], groundY, kTankXZ[i][1]);
+		auto tank = std::make_unique<Tank>();
+
+		// 무작위 X, Z 좌표 추출
+		float randX = distX(gen);
+		float randZ = distZ(gen);
+
+		// 해당 난수 좌표의 지형 높이를 계산
+		float groundY = mTerrain->GetHeightAt(randX, randZ);
+
+		tank->SetPosition(randX, groundY, randZ);
+		mTanks.emplace_back(std::move(tank));
 	}
-
-
-
 }
 
 void Level_2_Scene::Update(float dt)
 {
     if (Input::GetKeyDown(eKeyCode::ESC))
         SceneManager::LoadScene(L"MenuScene");
+
 	// 탱크 업데이트 & 인스턴스 행렬 수집
 	std::vector<XMFLOAT4X4> bodyMats, lidMats, barrelMats;
 	bodyMats.reserve(15); lidMats.reserve(15); barrelMats.reserve(15);
