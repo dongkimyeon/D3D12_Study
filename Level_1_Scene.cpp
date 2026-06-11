@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "framework.h"
 #include "Level_1_Scene.h"
-
 #include "Camera.h"
 #include "SceneManager.h"
 

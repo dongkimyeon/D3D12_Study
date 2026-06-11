@@ -2,10 +2,7 @@
 #include "Scene.h"
 #include "GameObject.h"
 #include "Helicopter.h"
-#include "Tank.h"
-#include "TankBody.h"
-#include "TankLid.h"
-#include "TankBarrel.h"
+
 #include "Ring.h"
 #include "Plane.h"
 #include "Missile.h"

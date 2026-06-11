@@ -1,6 +1,11 @@
 #pragma once
 #include "Scene.h"
-
+#include "GameObject.h"
+#include "Tank.h"
+#include "TankBody.h"
+#include "TankLid.h"
+#include "TankBarrel.h"
+#include "Terrain.h"
 class Level_2_Scene : public Scene
 {
 public:
@@ -11,4 +16,13 @@ public:
     virtual void Update(float dt) override;
     virtual void Render(ComPtr<ID3D12GraphicsCommandList>& commandList) override;
     virtual void Release() override;
+private:
+	std::vector<GameObject*> mGameObjects;
+
+	std::unique_ptr<TankBody>   mTankBodyRenderer;
+	std::unique_ptr<TankLid>    mTankLidRenderer;
+	std::unique_ptr<TankBarrel> mTankBarrelRenderer;
+	std::vector<std::unique_ptr<Tank>> mTanks;
+	std::unique_ptr<Terrain>    mTerrain;
+
 };
