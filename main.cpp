@@ -53,6 +53,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	WNDCLASSEXW winClass = { sizeof(WNDCLASSEXW) };
 	winClass.style = CS_HREDRAW | CS_VREDRAW;
 	winClass.lpfnWndProc = WndProc;

@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 #include "GameObject.h"
 
 class Gizumo : public GameObject

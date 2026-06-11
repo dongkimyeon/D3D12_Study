@@ -22,6 +22,9 @@ public:
 	XMFLOAT3 GetRotation() const { return rotation; }
 	XMFLOAT3 GetScale() const { return scale; }
 	XMFLOAT4 GetForwardVector() const { return forward_vector; }
+	size_t GetVertexCount() const { return vertices.size(); }
+	size_t GetIndexCount()  const { return indices.size(); }
+	const OBJVertex* GetFirstVertex() const { return vertices.empty() ? nullptr : &vertices[0]; }
 
 	/*-------------------------SETTER--------------------------*/
 	void SetWorldMatrix(const  XMFLOAT4X4 matrix) { worldMatrix = matrix; }

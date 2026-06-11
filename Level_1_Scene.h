@@ -6,8 +6,10 @@
 #include "TankBody.h"
 #include "TankLid.h"
 #include "TankBarrel.h"
-#include "Map.h"
+#include "Ring.h"
+#include "Plane.h"
 #include "Missile.h"
+#include "Terrain.h"
 
 class Level_1_Scene : public Scene
 {
@@ -21,9 +23,6 @@ public:
     virtual void Release() override;
 
 private:
-    void RebuildMapInstances();
-    void ApplyFrustumCulling(const DirectX::BoundingFrustum& worldFrustum);
-
     std::vector<GameObject*> mGameObjects;
     std::unique_ptr<Helicopter>        mHelicopter;
     std::vector<std::unique_ptr<Tank>> mTanks;
@@ -31,12 +30,9 @@ private:
     std::unique_ptr<TankBody>   mTankBodyRenderer;
     std::unique_ptr<TankLid>    mTankLidRenderer;
     std::unique_ptr<TankBarrel> mTankBarrelRenderer;
-
-    Map* mMap = nullptr;
-    float mMapSpacingX = 69.0f * 2.0f;
-    float mMapSpacingZ = 89.0f * 2.0f;
-    std::vector<XMFLOAT4X4> mAllTileMatrices;
-    int mVisibleTileCount = 0;
+	std::unique_ptr<Terrain>    mTerrain;	
+    Ring*    mRing    = nullptr;
+    Plane*   mPlane   = nullptr;
 
     static constexpr int kMissilePoolSize = 10;
     Missile* mMissilePool[kMissilePoolSize] = {};

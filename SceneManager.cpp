@@ -45,9 +45,7 @@ void SceneManager::Update()
 	{
 		
 		mActiveScene->Update(Time::GetDeltaTime());
-		
 	
-
 		
 	}
 }

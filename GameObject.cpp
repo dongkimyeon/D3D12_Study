@@ -11,6 +11,7 @@ D3D12_INDEX_BUFFER_VIEW  GameObject::sAABBIbView = {};
 GameObject::GameObject()
 {
 	position = { 0, 0, 0 };
+	rotation = { 0, 0, 0 };
 	worldMatrix = {
 		1, 0, 0, 0,
 		0, 1, 0, 0,

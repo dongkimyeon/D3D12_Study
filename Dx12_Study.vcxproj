@@ -171,6 +171,9 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Level_1_Scene.cpp" />
+    <ClCompile Include="Level_2_Scene.cpp" />
+    <ClCompile Include="Ring.cpp" />
+    <ClCompile Include="Terrain.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="TitleScene.cpp" />
   </ItemGroup>
@@ -218,6 +221,9 @@
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Level_1_Scene.h" />
+    <ClInclude Include="Level_2_Scene.h" />
+    <ClInclude Include="Ring.h" />
+    <ClInclude Include="Terrain.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="PickingUtils.h" />
