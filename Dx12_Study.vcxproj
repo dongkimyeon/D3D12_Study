@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="ExplosionSystem.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Framework.cpp" />
@@ -172,6 +173,7 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Level_1_Scene.cpp" />
     <ClCompile Include="Level_2_Scene.cpp" />
+    <ClCompile Include="Level_3_Scene.cpp" />
     <ClCompile Include="Ring.cpp" />
     <ClCompile Include="Terrain.cpp" />
     <ClCompile Include="Time.cpp" />
@@ -187,6 +189,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="ExplosionSystem.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="Entity.h" />
@@ -222,6 +225,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Level_1_Scene.h" />
     <ClInclude Include="Level_2_Scene.h" />
+    <ClInclude Include="Level_3_Scene.h" />
     <ClInclude Include="Ring.h" />
     <ClInclude Include="Terrain.h" />
     <ClInclude Include="Time.h" />

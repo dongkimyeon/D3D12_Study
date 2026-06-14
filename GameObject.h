@@ -39,6 +39,7 @@ public:
 	void BakeScale(float sx, float sy, float sz);
 	void BakeRotation(float pitch, float yaw, float roll);
 	void BakeRotationX(float angleDeg);
+	void RecomputeLocalAABB();
 	void SetAlpha(float alpha);
 	void SetColor(float r, float g, float b);
 

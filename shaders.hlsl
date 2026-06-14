@@ -8,7 +8,7 @@ struct VSInput
     float3 pos    : POS;
     float3 normal : NORMAL;
     float4 col    : COL;
-    // per-instance (slot 1)
+    
     float4 iRow0  : INSTANCE_WORLD0;
     float4 iRow1  : INSTANCE_WORLD1;
     float4 iRow2  : INSTANCE_WORLD2;

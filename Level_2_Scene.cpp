@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Input.h"
 #include "framework.h"
+#include "PickingUtils.h"
 
 extern bool debugMode;
 
@@ -58,6 +59,45 @@ void Level_2_Scene::Initialize()
 	mPlayerTank = std::make_unique<Tank>();
 	float spawnY = mTerrain->GetHeightAt(0.f, 0.f);
 	mPlayerTank->SetPosition(0.f, spawnY, 0.f);
+
+	for (int i = 0; i < kMissilePoolSize; ++i)
+	{
+		mMissilePool[i] = new Missile();
+		mMissilePool[i]->Initialize(device);
+	}
+
+	std::uniform_real_distribution<float> distScale(2.f, 6.f);
+	std::uniform_real_distribution<float> distRotY(0.f, 360.f);
+
+	for (int i = 0; i < 50; ++i)
+	{
+		float cx = distX(gen);
+		float cz = distZ(gen);
+		float cy = mTerrain->GetHeightAt(cx, cz);
+
+		auto* cube = new Cube();
+		cube->Initialize(device);
+		float sx = distScale(gen);
+		float sy = distScale(gen);
+		float sz = distScale(gen);
+		cube->SetScale(sx, sy, sz);
+		cube->SetPosition(cx, cy, cz);
+		cube->SetRotation(0.f, distRotY(gen), 0.f);
+		cube->Update(0.f);
+		mGameObjects.push_back(cube);
+	}
+
+	mExplosion = std::make_unique<ExplosionSystem>();
+	mExplosion->Initialize(device);
+
+	mShield = std::make_unique<GameObject>();
+	mShield->Initialize(device);
+	mShield->LoadFromOBJ("sphere.obj", device);
+	mShield->SetScale(10.f, 10.f, 10.f);
+	mShield->SetColor(0.4f, 0.8f, 1.f);
+
+	mYouWin = std::make_unique<LetterObj>();
+	mYouWin->Initialize(device, "YOUWIN.OBJ");
 }
 
 void Level_2_Scene::Update(float dt)
@@ -65,18 +105,114 @@ void Level_2_Scene::Update(float dt)
 	if (Input::GetKeyDown(eKeyCode::ESC))
 		SceneManager::LoadScene(L"MenuScene");
 
+	mShieldActive = Input::GetKey(eKeyCode::X);
+
+	if (!mWinActive)
+	{
+		bool allDead = std::all_of(mTanks.begin(), mTanks.end(),
+			[](const std::unique_ptr<Tank>& t) { return !t->IsAlive(); });
+		if (allDead || Input::GetKeyDown(eKeyCode::E))
+			mWinActive = true;
+	}
+
+	if (mWinActive)
+	{
+		mWinTimer += dt;
+		if (mWinTimer >= 3.f)
+		{
+			SceneManager::LoadScene(L"Level_3");
+			return;
+		}
+
+		float yaw = atan2f(-Camera::camForward.z, -Camera::camForward.x);
+
+		XMVECTOR camPos = XMLoadFloat3(&Camera::camPos);
+		XMVECTOR camFwd = XMLoadFloat3(&Camera::camForward);
+		XMVECTOR camUp  = XMLoadFloat3(&Camera::camUp);
+		XMVECTOR textPos = camPos + camFwd * 8.f + camUp * 1.5f;
+		XMFLOAT3 textPosF;
+		XMStoreFloat3(&textPosF, textPos);
+
+		mYouWin->SetPosition(textPosF);
+		mYouWin->SetRotation(0.f, -XMConvertToDegrees(yaw) - 90.f, 0.f);
+		mYouWin->Update(0.f);
+	}
+
+	if (Input::GetKeyDown(eKeyCode::RButton))
+	{
+		float screenW = (float)Framework::GetWidth();
+		float screenH = (float)Framework::GetHeight();
+
+		POINT pt;
+		GetCursorPos(&pt);
+		ScreenToClient(Framework::GetHwnd(), &pt);
+
+		float ndcX = (2.f * pt.x / screenW) - 1.f;
+		float ndcY = 1.f - (2.f * pt.y / screenH);
+
+		XMMATRIX pickView = XMMatrixLookToLH(
+			XMLoadFloat3(&Camera::camPos),
+			XMVectorSet(Camera::camForward.x, Camera::camForward.y, Camera::camForward.z, 0.f),
+			XMVectorSet(Camera::camUp.x, Camera::camUp.y, Camera::camUp.z, 0.f));
+		XMMATRIX pickProj = XMMatrixPerspectiveFovLH(XM_PIDIV4, screenW / screenH, 0.1f, 1000.f);
+
+		XMVECTOR rayViewDir = XMVector3TransformCoord(
+			XMVectorSet(ndcX, ndcY, 1.f, 0.f), XMMatrixInverse(nullptr, pickProj));
+		XMVECTOR rayDir = XMVector3Normalize(
+			XMVector3TransformNormal(XMVectorSetW(rayViewDir, 0.f), XMMatrixInverse(nullptr, pickView)));
+		XMVECTOR rayOrigin = XMLoadFloat3(&Camera::camPos);
+
+		mSelectedTank = -1;
+		float nearest = FLT_MAX;
+		for (int i = 0; i < (int)mTanks.size(); ++i)
+		{
+			if (!mTanks[i]->IsAlive()) continue;
+			float dist;
+			if (mTanks[i]->GetWorldOBB().Intersects(rayOrigin, rayDir, dist) && dist < nearest)
+			{
+				nearest = dist;
+				mSelectedTank = i;
+			}
+		}
+	}
+
+	if (Input::GetKeyDown(eKeyCode::Q)
+		&& mSelectedTank >= 0 && mSelectedTank < (int)mTanks.size()
+		&& mTanks[mSelectedTank]->IsAlive())
+	{
+		XMFLOAT3 firePos = { mPlayerTank->mBarrelMatrix._41,
+		                     mPlayerTank->mBarrelMatrix._42,
+		                     mPlayerTank->mBarrelMatrix._43 };
+		XMFLOAT3 targetPos = mTanks[mSelectedTank]->GetWorldOBB().Center;
+
+		XMVECTOR dir = XMVector3Normalize(XMLoadFloat3(&targetPos) - XMLoadFloat3(&firePos));
+		XMFLOAT3 dirF;
+		XMStoreFloat3(&dirF, dir);
+
+		for (int i = 0; i < kMissilePoolSize; ++i)
+		{
+			if (mMissilePool[i]->IsDead())
+			{
+				mMissilePool[i]->Spawn(firePos, dirF, 80.f);
+				mMissilePool[i]->SetTarget(mTanks[mSelectedTank].get());
+				break;
+			}
+		}
+	}
+
 	constexpr float kMoveSpeed = 15.0f;
 	constexpr float kTurnSpeed = 1.5f;
 
 	XMFLOAT3 pos = mPlayerTank->GetPosition();
+	const XMFLOAT3 savedPos = pos;
 	float sinH = sinf(mPlayerTank->mHeading);
 	float cosH = cosf(mPlayerTank->mHeading);
 
 	if (Input::GetKey(eKeyCode::W)) { pos.x -= sinH * kMoveSpeed * dt; pos.z -= cosH * kMoveSpeed * dt; }
 	if (Input::GetKey(eKeyCode::S)) { pos.x += sinH * kMoveSpeed * dt; pos.z += cosH * kMoveSpeed * dt; }
 
-	if (Input::GetKey(eKeyCode::A)) mPlayerTank->mHeading += kTurnSpeed * dt;
-	if (Input::GetKey(eKeyCode::D)) mPlayerTank->mHeading -= kTurnSpeed * dt;
+	if (Input::GetKey(eKeyCode::A)) mPlayerTank->mHeading -= kTurnSpeed * dt;
+	if (Input::GetKey(eKeyCode::D)) mPlayerTank->mHeading += kTurnSpeed * dt;
 
 	pos.y = mTerrain->GetHeightAt(pos.x, pos.z);
 	mPlayerTank->SetPosition(pos);
@@ -124,9 +260,30 @@ void Level_2_Scene::Update(float dt)
 	}
 
 	mPlayerTank->Update(dt);
+
+	{
+		DirectX::BoundingOrientedBox tankOBB = mPlayerTank->GetWorldOBB();
+		for (auto* obj : mGameObjects)
+		{
+			if (tankOBB.Intersects(obj->GetWorldOBB()))
+			{
+				mPlayerTank->SetPosition(savedPos);
+				mPlayerTank->Update(dt);
+				break;
+			}
+		}
+	}
+
 	mPlayerBodyRenderer->SetWorldMatrix(mPlayerTank->mBodyMatrix);
 	mPlayerLidRenderer->SetWorldMatrix(mPlayerTank->mLidMatrix);
 	mPlayerBarrelRenderer->SetWorldMatrix(mPlayerTank->mBarrelMatrix);
+
+	if (mShieldActive)
+	{
+		XMFLOAT3 center = mPlayerTank->GetWorldOBB().Center;
+		mShield->SetPosition(center);
+		mShield->Update(0.f);
+	}
 
 	constexpr float kCamDist   = 12.0f;
 	constexpr float kCamHeight = 5.0f;
@@ -151,8 +308,7 @@ void Level_2_Scene::Update(float dt)
 	XMStoreFloat3(&Camera::camRight, rightV);
 	XMStoreFloat3(&Camera::camUp, upV);
 
-	std::vector<XMFLOAT4X4> bodyMats, lidMats, barrelMats;
-	bodyMats.reserve(15); lidMats.reserve(15); barrelMats.reserve(15);
+	mBodyMats.clear(); mLidMats.clear(); mBarrelMats.clear();
 
 	for (auto& tank : mTanks)
 	{
@@ -165,15 +321,50 @@ void Level_2_Scene::Update(float dt)
 
 		if (tank->IsAlive())
 		{
-			bodyMats.push_back(tank->mBodyMatrix);
-			lidMats.push_back(tank->mLidMatrix);
-			barrelMats.push_back(tank->mBarrelMatrix);
+			mBodyMats.push_back(tank->mBodyMatrix);
+			mLidMats.push_back(tank->mLidMatrix);
+			mBarrelMats.push_back(tank->mBarrelMatrix);
 		}
 	}
 
-	mTankBodyRenderer->UpdateInstances(bodyMats);
-	mTankLidRenderer->UpdateInstances(lidMats);
-	mTankBarrelRenderer->UpdateInstances(barrelMats);
+	mTankBodyRenderer->UpdateInstances(mBodyMats);
+	mTankLidRenderer->UpdateInstances(mLidMats);
+	mTankBarrelRenderer->UpdateInstances(mBarrelMats);
+
+	for (int i = 0; i < kMissilePoolSize; ++i)
+	{
+		mMissilePool[i]->Update(dt);
+		if (mMissilePool[i]->IsDead()) continue;
+
+		XMVECTOR mpos = XMLoadFloat3(mMissilePool[i]->GetPositionPtr());
+		for (auto& tank : mTanks)
+		{
+			if (!tank->IsAlive()) continue;
+			if (tank->GetWorldOBB().Contains(mpos) != DirectX::DISJOINT)
+			{
+				XMFLOAT3 hitPos = tank->GetPosition();
+				tank->Hit();
+				mMissilePool[i]->Kill();
+				if (!tank->IsAlive())
+					mExplosion->Spawn(hitPos);
+				break;
+			}
+		}
+
+		if (!mMissilePool[i]->IsDead())
+		{
+			for (auto* obj : mGameObjects)
+			{
+				if (obj->GetWorldOBB().Contains(mpos) != DirectX::DISJOINT)
+				{
+					mMissilePool[i]->Kill();
+					break;
+				}
+			}
+		}
+	}
+
+	mExplosion->Update(dt);
 }
 
 void Level_2_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -200,8 +391,27 @@ void Level_2_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 	mPlayerLidRenderer->Render(commandList, view, proj);
 	mPlayerBarrelRenderer->Render(commandList, view, proj);
 
+	for (int i = 0; i < kMissilePoolSize; ++i)
+		mMissilePool[i]->Render(commandList, view, proj);
+
+	mExplosion->Render(commandList, view, proj);
+
+	if (mShieldActive)
+		mShield->Render(commandList, view, proj);
+
+	if (mWinActive)
+		mYouWin->Render(commandList, view, proj);
 }
 
 void Level_2_Scene::Release()
 {
+	for (auto* obj : mGameObjects)
+		delete obj;
+	mGameObjects.clear();
+
+	for (int i = 0; i < kMissilePoolSize; ++i)
+	{
+		delete mMissilePool[i];
+		mMissilePool[i] = nullptr;
+	}
 }

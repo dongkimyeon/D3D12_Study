@@ -301,10 +301,11 @@ DirectX::BoundingBox GameObject::GetWorldAABB() const
 
 DirectX::BoundingOrientedBox GameObject::GetWorldOBB() const
 {
-	DirectX::BoundingBox aabb = GetWorldAABB();
-	DirectX::BoundingOrientedBox obb;
-	DirectX::BoundingOrientedBox::CreateFromBoundingBox(obb, aabb);
-	return obb;
+	DirectX::BoundingOrientedBox localOBB;
+	DirectX::BoundingOrientedBox::CreateFromBoundingBox(localOBB, mLocalAABB);
+	DirectX::BoundingOrientedBox worldOBB;
+	localOBB.Transform(worldOBB, XMLoadFloat4x4(&worldMatrix));
+	return worldOBB;
 }
 
 void GameObject::RenderAABB(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATRIX view, XMMATRIX proj)
@@ -374,12 +375,28 @@ void GameObject::SetColor(float r, float g, float b)
 	UpdateVertexBuffer();
 }
 
+void GameObject::RecomputeLocalAABB()
+{
+	if (vertices.empty()) return;
+	XMFLOAT3 vmin = { FLT_MAX,  FLT_MAX,  FLT_MAX };
+	XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+	for (const auto& v : vertices) {
+		vmin.x = std::min(vmin.x, v.x); vmax.x = std::max(vmax.x, v.x);
+		vmin.y = std::min(vmin.y, v.y); vmax.y = std::max(vmax.y, v.y);
+		vmin.z = std::min(vmin.z, v.z); vmax.z = std::max(vmax.z, v.z);
+	}
+	mLocalAABB = DirectX::BoundingBox(
+		{ (vmin.x + vmax.x) * 0.5f, (vmin.y + vmax.y) * 0.5f, (vmin.z + vmax.z) * 0.5f },
+		{ (vmax.x - vmin.x) * 0.5f, (vmax.y - vmin.y) * 0.5f, (vmax.z - vmin.z) * 0.5f });
+}
+
 void GameObject::BakeScale(float sx, float sy, float sz)
 {
 	for (auto& v : vertices) {
 		v.x *= sx; v.y *= sy; v.z *= sz;
 	}
 	UpdateVertexBuffer();
+	RecomputeLocalAABB();
 }
 
 void GameObject::BakeRotation(float pitch, float yaw, float roll)
@@ -395,6 +412,7 @@ void GameObject::BakeRotation(float pitch, float yaw, float roll)
 		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&v.nx), nor);
 	}
 	UpdateVertexBuffer();
+	RecomputeLocalAABB();
 }
 
 void GameObject::BakeRotationX(float angleDeg)
@@ -411,5 +429,6 @@ void GameObject::BakeRotationX(float angleDeg)
 		v.nz = sinA * ny + cosA * nz;
 	}
 	UpdateVertexBuffer();
+	RecomputeLocalAABB();
 }
 

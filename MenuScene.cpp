@@ -20,35 +20,20 @@ void MenuScene::Initialize()
 	Camera::camPitch = 0.0f;
 	Camera::SetPosition(0, -2.5f, -45.0f);
 
-	Tutorial = new LetterObj();
-	Tutorial->Initialize(Framework::GetDevice(), "SM_TUTORIAL.obj");
-	Tutorial->SetPosition(0, 10.0f, 0);
+	auto makeLabel = [&](const char* file, float y) {
+		auto* obj = new LetterObj();
+		obj->Initialize(Framework::GetDevice(), file);
+		obj->SetPosition(0, y, 0);
+		mGameObjects.push_back(obj);
+		return obj;
+	};
 
-	Level_1 = new LetterObj();
-	Level_1->Initialize(Framework::GetDevice(), "SM_LEVEL1.obj");
-	Level_1->SetPosition(0, 5.0f, 0);
-
-	Level_2 = new LetterObj();
-	Level_2->Initialize(Framework::GetDevice(), "SM_LEVEL2.obj");
-	Level_2->SetPosition(0, 0.0f, 0);
-	Level_3 = new LetterObj();
-	Level_3->Initialize(Framework::GetDevice(), "SM_LEVEL3.obj");
-	Level_3->SetPosition(0, -5.0f, 0);
-
-	Start = new LetterObj();
-	Start->Initialize(Framework::GetDevice(), "SM_START.obj");
-	Start->SetPosition(0, -10.0f, 0);
-
-	End = new LetterObj();
-	End->Initialize(Framework::GetDevice(), "SM_END.obj");
-	End->SetPosition(0, -15.0f, 0);
-
-	mGameObjects.push_back(Tutorial);
-	mGameObjects.push_back(Level_1);
-	mGameObjects.push_back(Level_2);
-	mGameObjects.push_back(Level_3);
-	mGameObjects.push_back(Start);
-	mGameObjects.push_back(End);
+	makeLabel("SM_TUTORIAL.obj",  10.0f);
+	makeLabel("SM_LEVEL1.obj",     5.0f);
+	makeLabel("SM_LEVEL2.obj",     0.0f);
+	makeLabel("SM_LEVEL3.obj",    -5.0f);
+	Start = makeLabel("SM_START.obj", -10.0f);
+	End   = makeLabel("SM_END.obj",   -15.0f);
 
 }
 
@@ -87,5 +72,5 @@ void MenuScene::Release()
 	for (auto obj : mGameObjects)
 		delete obj;
 	mGameObjects.clear();
-	Tutorial = Level_1 = Level_2 = Level_3 = Start = End = nullptr;
+	Start = End = nullptr;
 }

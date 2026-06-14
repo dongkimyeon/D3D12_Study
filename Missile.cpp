@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Missile.h"
+#include "Tank.h"
 
 Missile::Missile() {}
 Missile::~Missile() {}
@@ -23,8 +24,18 @@ void Missile::Spawn(XMFLOAT3 pos, XMFLOAT3 dir, float speed)
 void Missile::Update(float dt)
 {
     if (mLifetime <= 0.f) return;
-
     mLifetime -= dt;
+
+    if (mTarget && mTarget->IsAlive())
+    {
+        XMFLOAT3 targetPos = mTarget->GetWorldOBB().Center;
+        XMFLOAT3 myPos = GetPosition();
+        XMVECTOR desired = XMVector3Normalize(XMLoadFloat3(&targetPos) - XMLoadFloat3(&myPos));
+        XMVECTOR current = XMLoadFloat3(&mDirection);
+        constexpr float kTurnRate = 5.f;
+        XMVECTOR newDir = XMVector3Normalize(XMVectorLerp(current, desired, std::min(kTurnRate * dt, 1.f)));
+        XMStoreFloat3(&mDirection, newDir);
+    }
 
     XMFLOAT3 pos = GetPosition();
     pos.x += mDirection.x * mSpeed * dt;

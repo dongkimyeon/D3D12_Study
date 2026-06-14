@@ -15,11 +15,7 @@ public:
 
 private:
 	std::vector<GameObject*> mGameObjects;
-	LetterObj* Tutorial = nullptr;
-	LetterObj* Level_1  = nullptr;
-	LetterObj* Level_2  = nullptr;
-	LetterObj* Level_3  = nullptr;
-	LetterObj* Start    = nullptr;
-	LetterObj* End      = nullptr;
+	LetterObj* Start = nullptr;
+	LetterObj* End   = nullptr;
 };
 

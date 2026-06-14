@@ -79,8 +79,6 @@ void Helicopter::Update(float dt)
 	mTailAngle  += 800.0f * dt;
 
 	mBody->Update(dt);
-	mBlade->Update(dt);
-	mTail->Update(dt);
 
 	XMFLOAT3 bodyPos = mBody->GetPosition();
 	XMMATRIX R_body  = XMMatrixRotationRollPitchYaw(mTiltPitch, mHeading, mTiltRoll);

@@ -4,7 +4,6 @@
 #include "Helicopter.h"
 
 #include "Ring.h"
-#include "Plane.h"
 #include "Missile.h"
 #include "Terrain.h"
 
@@ -25,7 +24,6 @@ private:
 
 	std::unique_ptr<Terrain>    mTerrain;	
     Ring*    mRing    = nullptr;
-    Plane*   mPlane   = nullptr;
 
     static constexpr int kMissilePoolSize = 10;
     Missile* mMissilePool[kMissilePoolSize] = {};

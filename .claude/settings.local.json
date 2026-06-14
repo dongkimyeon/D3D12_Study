@@ -10,7 +10,9 @@
       "Bash(powershell *)",
       "Bash(msbuild Dx12_Study.sln /p:Configuration=Debug /p:Platform=x64 /t:Build /m /nologo)",
       "Skill(update-config)",
-      "Bash(claude mcp *)"
+      "Bash(claude mcp *)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)"
     ]
   }
 }

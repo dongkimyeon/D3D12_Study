@@ -1,74 +1,78 @@
 #include "stdafx.h"
+#include "Level_3_Scene.h"
 #include "framework.h"
-#include "Level_1_Scene.h"
 #include "Camera.h"
 #include "SceneManager.h"
 
 extern bool debugMode;
 
-Level_1_Scene::Level_1_Scene()
-{
-}
+Level_3_Scene::Level_3_Scene() {}
+Level_3_Scene::~Level_3_Scene() {}
 
-Level_1_Scene::~Level_1_Scene()
-{
-}
-
-void Level_1_Scene::Initialize()
+void Level_3_Scene::Initialize()
 {
     debugMode = false;
 
     Input::LockCursor(Framework::GetHwnd());
 
+    auto device = Framework::GetDevice();
+
+    mTerrain = std::make_unique<Terrain>();
+    mTerrain->Initialize(device);
+    mTerrain->SetScale(3.0f, 3.0f, 3.0f);
+
     mHelicopter = std::make_unique<Helicopter>();
-    mHelicopter->Initialize(Framework::GetDevice());
+    mHelicopter->Initialize(device);
     mHelicopter->SetPosition(0.f, 5.f, 0.f);
 
     Camera::SetPosition(0.f, 10.f, -15.f);
 
-	mTerrain = std::make_unique<Terrain>();
-	mTerrain->Initialize(Framework::GetDevice());
-	mTerrain->SetScale(3.0f, 3.0f, 3.0f);
-
-    static const float kTankXZ[15][2] = {
-        {   0.f,  40.f }, {  30.f,  40.f }, { -30.f,  40.f },
-        {  60.f,  80.f }, { -60.f,  80.f }, {   0.f,  80.f },
-        {  90.f, 120.f }, { -90.f, 120.f }, {  30.f, 120.f },
-        { -30.f, 120.f }, {  60.f, 160.f }, { -60.f, 160.f },
-        {   0.f, 160.f }, {  90.f, 200.f }, { -90.f, 200.f },
-    };
-
- 
-
-    mRing = new Ring();
-    mRing->Initialize(Framework::GetDevice());
-    mRing->SetPosition(0.f, 55.f, 250.f);
-    mGameObjects.push_back(mRing);
-
-    for (int i = 0; i < kMissilePoolSize; i++)
+    for (int i = 0; i < kMissilePoolSize; ++i)
     {
         mMissilePool[i] = new Missile();
-        mMissilePool[i]->Initialize(Framework::GetDevice());
+        mMissilePool[i]->Initialize(device);
+    }
+
+    // 지형 위 탱크 배치
+    constexpr size_t numTanks = 15;
+
+    mTankBodyRenderer   = std::make_unique<TankBody>();
+    mTankLidRenderer    = std::make_unique<TankLid>();
+    mTankBarrelRenderer = std::make_unique<TankBarrel>();
+    mTankBodyRenderer->Initialize(device, numTanks);
+    mTankLidRenderer->Initialize(device, numTanks);
+    mTankBarrelRenderer->Initialize(device, numTanks);
+
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_real_distribution<float> distX(-100.f, 100.f);
+    std::uniform_real_distribution<float> distZ(40.f, 250.f);
+
+    mTanks.reserve(numTanks);
+    for (size_t i = 0; i < numTanks; ++i)
+    {
+        float rx = distX(gen);
+        float rz = distZ(gen);
+        float ry = mTerrain->GetHeightAt(rx, rz);
+
+        auto tank = std::make_unique<Tank>();
+        tank->SetPosition(rx, ry, rz);
+        tank->Update(0.f);
+        mTanks.emplace_back(std::move(tank));
     }
 }
 
-void Level_1_Scene::Update(float dt)
+void Level_3_Scene::Update(float dt)
 {
     if (Input::GetKeyDown(eKeyCode::ESC))
         SceneManager::LoadScene(L"MenuScene");
-
-    if (Input::GetKeyDown(eKeyCode::N))
-        SceneManager::LoadScene(L"Level_2");
 
     if (Input::GetKeyDown(eKeyCode::V))
         mFirstPerson = !mFirstPerson;
 
     if (Input::GetKeyDown(eKeyCode::F5))
     {
-        if (Input::IsCursorLocked())
-            Input::UnlockCursor();
-        else
-            Input::LockCursor(Framework::GetHwnd());
+        if (Input::IsCursorLocked()) Input::UnlockCursor();
+        else                         Input::LockCursor(Framework::GetHwnd());
     }
 
     mHelicopter->Update(dt);
@@ -81,6 +85,7 @@ void Level_1_Scene::Update(float dt)
         mHelicopter->SetPosition(heliPos.x, groundY + 2.0f, heliPos.z);
         heliPos.y = groundY + 2.0f;
     }
+
     float heading = mHelicopter->GetHeading();
 
     if (mFirstPerson)
@@ -97,27 +102,19 @@ void Level_1_Scene::Update(float dt)
     }
     else
     {
-        const float camDist   = 15.f;
-        const float camHeight =  5.f;
+        const float camDist = 15.f, camHeight = 5.f;
         XMFLOAT3 targetCamPos = {
             heliPos.x - sinf(heading) * camDist,
             heliPos.y + camHeight,
             heliPos.z - cosf(heading) * camDist
         };
-
-        const float camSpeed = 8.f;
-        float t = 1.f - expf(-camSpeed * dt);
-        XMVECTOR camPos    = XMLoadFloat3(&Camera::camPos);
-        XMVECTOR targetPos = XMLoadFloat3(&targetCamPos);
-        XMStoreFloat3(&Camera::camPos, XMVectorLerp(camPos, targetPos, t));
-
-        XMVECTOR lookDir = XMVector3Normalize(
-            XMLoadFloat3(&heliPos) - XMLoadFloat3(&Camera::camPos));
-        XMStoreFloat3(&Camera::camForward, lookDir);
+        float t = 1.f - expf(-8.f * dt);
+        XMStoreFloat3(&Camera::camPos,
+            XMVectorLerp(XMLoadFloat3(&Camera::camPos), XMLoadFloat3(&targetCamPos), t));
+        XMStoreFloat3(&Camera::camForward,
+            XMVector3Normalize(XMLoadFloat3(&heliPos) - XMLoadFloat3(&Camera::camPos)));
         Camera::camUp = { 0.f, 1.f, 0.f };
     }
-
- 
 
     for (const auto& obj : mGameObjects)
         obj->Update(dt);
@@ -129,7 +126,7 @@ void Level_1_Scene::Update(float dt)
         XMFLOAT3 spawnPos = mFireFromLeft ? pos1 : pos2;
         mFireFromLeft = !mFireFromLeft;
 
-        for (int i = 0; i < kMissilePoolSize; i++)
+        for (int i = 0; i < kMissilePoolSize; ++i)
         {
             if (mMissilePool[i]->IsDead())
             {
@@ -139,14 +136,25 @@ void Level_1_Scene::Update(float dt)
         }
     }
 
-    for (int i = 0; i < kMissilePoolSize; i++)
+    for (int i = 0; i < kMissilePoolSize; ++i)
         mMissilePool[i]->Update(dt);
 
-    if (mRing && mRing->CheckCollision(heliPos))
-        SceneManager::LoadScene(L"Level_2");
+    // 탱크 인스턴스 매트릭스 업데이트
+    mBodyMats.clear(); mLidMats.clear(); mBarrelMats.clear();
+    for (auto& tank : mTanks)
+    {
+        if (!tank->IsAlive()) continue;
+        mBodyMats.push_back(tank->mBodyMatrix);
+        mLidMats.push_back(tank->mLidMatrix);
+        mBarrelMats.push_back(tank->mBarrelMatrix);
+    }
+    mTankBodyRenderer->UpdateInstances(mBodyMats);
+    mTankLidRenderer->UpdateInstances(mLidMats);
+    mTankBarrelRenderer->UpdateInstances(mBarrelMats);
+
 }
 
-void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Level_3_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
     XMMATRIX view = XMMatrixLookToLH(
         XMLoadFloat3(&Camera::camPos),
@@ -160,24 +168,27 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
         obj->Render(commandList, view, proj);
 
     mHelicopter->Render(commandList, view, proj);
-	mTerrain->Render(commandList, view, proj);
-    for (int i = 0; i < kMissilePoolSize; i++)
-        mMissilePool[i]->Render(commandList, view, proj);
+    mTerrain->Render(commandList, view, proj);
 
+    mTankBodyRenderer->Render(commandList, view, proj);
+    mTankLidRenderer->Render(commandList, view, proj);
+    mTankBarrelRenderer->Render(commandList, view, proj);
+
+    for (int i = 0; i < kMissilePoolSize; ++i)
+        mMissilePool[i]->Render(commandList, view, proj);
 }
 
-void Level_1_Scene::Release()
+void Level_3_Scene::Release()
 {
     Input::UnlockCursor();
     ClipCursor(nullptr);
     debugMode = true;
-    for (auto obj : mGameObjects)
+
+    for (auto* obj : mGameObjects)
         delete obj;
     mGameObjects.clear();
-    mRing = nullptr;
-    mHelicopter.reset();
- 
-    for (int i = 0; i < kMissilePoolSize; i++)
+
+    for (int i = 0; i < kMissilePoolSize; ++i)
     {
         delete mMissilePool[i];
         mMissilePool[i] = nullptr;

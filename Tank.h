@@ -15,7 +15,7 @@ public:
     void SetPosition(XMFLOAT3 pos);
 
     void Hit() { mHitCount++; }
-    bool IsAlive() const { return mHitCount < 5; }
+    bool IsAlive() const { return mHitCount < 1; }
     DirectX::BoundingOrientedBox GetWorldOBB() const;
 
     float mPitch   = 0.0f;
