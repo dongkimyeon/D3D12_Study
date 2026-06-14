@@ -35,11 +35,10 @@ void Helicopter::Initialize(ComPtr<ID3D12Device> device)
 
 void Helicopter::Update(float dt)
 {
-	// --- 마우스로 기체 회전 ---
+
 	POINT delta = Input::GetMouseDelta();
 	mHeading += static_cast<float>(delta.x) * mMouseSensitivity;
 
-	// --- WASD 이동 ---
 	const float maxTilt = XMConvertToRadians(18.f);
 	const float tiltSpeed = 6.f;
 
@@ -68,7 +67,6 @@ void Helicopter::Update(float dt)
 
 	pos += vel * dt;
 
-	// 기울기 보간 (지수 감쇠 lerp)
 	float t = 1.f - expf(-tiltSpeed * dt);
 	mTiltPitch += (targetPitch - mTiltPitch) * t;
 	mTiltRoll += (targetRoll - mTiltRoll) * t;
@@ -77,24 +75,18 @@ void Helicopter::Update(float dt)
 	mBody->SetPosition(bodyPosF);
 	mBody->SetRotation(XMFLOAT3{ mTiltPitch, mHeading, mTiltRoll });
 
-	// --- 블레이드 / 꼬리 애니메이션 ---
 	mBladeAngle += 1000.0f * dt;
 	mTailAngle  += 800.0f * dt;
 
-	// 업데이트
 	mBody->Update(dt);
 	mBlade->Update(dt);
 	mTail->Update(dt);
 
-	// --- 로터/꼬리 worldMatrix 직접 계산 (바디 로컬 공간 기준 자전) ---
-	// S * R_spin * T_local * R_body * T_body 순서로 합성하면
-	// R_spin이 바디 로컬 축 기준으로 동작하면서 pitch/roll이 올바르게 반영됨
 	XMFLOAT3 bodyPos = mBody->GetPosition();
 	XMMATRIX R_body  = XMMatrixRotationRollPitchYaw(mTiltPitch, mHeading, mTiltRoll);
 	XMMATRIX T_body  = XMMatrixTranslation(bodyPos.x, bodyPos.y, bodyPos.z);
 	XMMATRIX S       = XMMatrixScaling(0.01f, 0.01f, 0.01f);
 
-	// [메인 로터] 바디 로컬 Y축(상방향) 기준 자전
 	{
 		XMMATRIX R_spin  = XMMatrixRotationY(XMConvertToRadians(mBladeAngle));
 		XMMATRIX T_local = XMMatrixTranslation(0.0f, 0.8f, 2.6f);
@@ -103,7 +95,6 @@ void Helicopter::Update(float dt)
 		mBlade->SetWorldMatrix(mat);
 	}
 
-	// [꼬리 로터] 바디 로컬 X축(좌우 방향) 기준 자전
 	{
 		XMMATRIX R_spin  = XMMatrixRotationX(XMConvertToRadians(mTailAngle));
 		XMMATRIX T_local = XMMatrixTranslation(0.3f, 0.7f, -6.4f);

@@ -1,6 +1,5 @@
 #include "Camera.h"
 
-// 정적 멤버 변수 정의 및 초기화 (XMFLOAT3 사용)
 DirectX::XMFLOAT3 Camera::camPos = { 0.0f, 25.0f, -25.0f };
 DirectX::XMFLOAT3 Camera::camForward = { 0.0f, 0.0f, 1.0f };
 DirectX::XMFLOAT3 Camera::camRight = { 1.0f, 0.0f, 0.0f };
@@ -17,11 +16,9 @@ extern bool debugMode;
 
 void Camera::Update(float dt)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	
 	if (debugMode) {
-		// 1. 카메라 마우스 회전 제어
-		if (!io.WantCaptureMouse && Input::GetKey(eKeyCode::LButton))
+
+		if (Input::GetKey(eKeyCode::LButton))
 		{
 			POINT currMousePos;
 			GetCursorPos(&currMousePos);
@@ -38,19 +35,16 @@ void Camera::Update(float dt)
 		}
 		else { isRotating = false; }
 
-		// 2. 카메라 방향 벡터 연산
 		DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(camPitch, camYaw, 0.0f);
 
 		DirectX::XMVECTOR forward = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotationMatrix);
 		DirectX::XMVECTOR right = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotationMatrix);
 		DirectX::XMVECTOR up = DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotationMatrix);
 
-		// 연산된 방향 벡터를 XMFLOAT3에 저장 (메모리)
 		DirectX::XMStoreFloat3(&camForward, forward);
 		DirectX::XMStoreFloat3(&camRight, right);
 		DirectX::XMStoreFloat3(&camUp, up);
 
-		// 3. 카메라 이동 (Load -> Math -> Store)
 		DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&camPos);
 
 		if (Input::GetKey(eKeyCode::W)) pos += forward * moveSpeed * dt;

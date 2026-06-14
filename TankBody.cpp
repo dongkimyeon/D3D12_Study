@@ -13,7 +13,6 @@ void TankBody::Initialize(ComPtr<ID3D12Device> device, UINT count)
     sSharedLocalAABB = mLocalAABB;
     CreateInstanceBuffer(device, count);
 
-    // OBB 디버그 드로우용 Upload Heap 버퍼 (count 슬롯)
     D3D12_HEAP_PROPERTIES upload = { D3D12_HEAP_TYPE_UPLOAD };
     UINT obbBufSize = count * sizeof(XMFLOAT4X4);
     D3D12_RESOURCE_DESC obbDesc = {
@@ -46,7 +45,6 @@ void TankBody::RenderOBBs(ComPtr<ID3D12GraphicsCommandList>& commandList, XMMATR
     if (!sShowAABB || mCurrentBodyMats.empty()) return;
     EnsureAABBMesh();
 
-    // 모든 인스턴스의 OBB 월드 행렬을 한 번에 계산
     std::vector<XMFLOAT4X4> obbMats;
     obbMats.reserve(mCurrentBodyMats.size());
     for (const auto& mat : mCurrentBodyMats)

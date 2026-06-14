@@ -30,7 +30,6 @@ void Level_1_Scene::Initialize()
 	mTerrain->Initialize(Framework::GetDevice());
 	mTerrain->SetScale(3.0f, 3.0f, 3.0f);
 
-
     static const float kTankXZ[15][2] = {
         {   0.f,  40.f }, {  30.f,  40.f }, { -30.f,  40.f },
         {  60.f,  80.f }, { -60.f,  80.f }, {   0.f,  80.f },
@@ -120,11 +119,9 @@ void Level_1_Scene::Update(float dt)
 
  
 
-
     for (const auto& obj : mGameObjects)
         obj->Update(dt);
 
-    // 미사일 발사 (마우스 왼쪽 클릭)
     if (Input::GetKeyDown(eKeyCode::LButton))
     {
         XMFLOAT3 pos1, pos2, dir;
@@ -145,7 +142,6 @@ void Level_1_Scene::Update(float dt)
     for (int i = 0; i < kMissilePoolSize; i++)
         mMissilePool[i]->Update(dt);
 
-    // Ring 충돌 -> Level 2 전환
     if (mRing && mRing->CheckCollision(heliPos))
         SceneManager::LoadScene(L"Level_2");
 }
@@ -168,40 +164,6 @@ void Level_1_Scene::Render(ComPtr<ID3D12GraphicsCommandList>& commandList)
     for (int i = 0; i < kMissilePoolSize; i++)
         mMissilePool[i]->Render(commandList, view, proj);
 
-    ImGui::Begin("Terrain");
-    {
-        XMFLOAT3 ts = mTerrain->GetScale();
-        XMFLOAT3 tp = mTerrain->GetPosition();
-        bool changed = false;
-        changed |= ImGui::DragFloat ("Height Scale (Y)", &ts.y,  0.05f, 0.01f, 20.f);
-        changed |= ImGui::DragFloat("X Scale",         &ts.x,  0.05f, 0.01f, 20.f);
-        changed |= ImGui::DragFloat("Z Scale",         &ts.z,  0.05f, 0.01f, 20.f);
-        changed |= ImGui::DragFloat ("Y Offset",         &tp.y,  0.5f, -50.f,  50.f);
-        if (changed)
-        {
-            mTerrain->SetScale(ts);
-            mTerrain->SetPosition(tp);
-        }
-    }
-    ImGui::End();
-
-    ImGui::Begin("Level 1");
-    ImGui::Text("Camera: %s (V to toggle)", mFirstPerson ? "1인칭" : "3인칭");
-    ImGui::Text("Pos: (%.1f, %.1f, %.1f)", Camera::camPos.x, Camera::camPos.y, Camera::camPos.z);
-    ImGui::Text("Heli: (%.1f, %.1f, %.1f)",
-        mHelicopter->GetPosition().x,
-        mHelicopter->GetPosition().y,
-        mHelicopter->GetPosition().z);
-    ImGui::Text("Ring Pos: (%.1f, %.1f, %.1f)",
-        mRing->GetPosition().x, mRing->GetPosition().y, mRing->GetPosition().z);
-    ImGui::Text("N: Level2  |  ESC: Menu");
-    if (mFirstPerson)
-        ImGui::DragFloat3("FPV Offset", &mFpvOffset.x, 0.01f);
-    ImGui::Separator();
-    ImGui::DragFloat3("Missile L", &mHelicopter->mMissileOffset1.x, 0.05f);
-    ImGui::DragFloat3("Missile R", &mHelicopter->mMissileOffset2.x, 0.05f);
-    ImGui::Separator();
-    ImGui::End();
 }
 
 void Level_1_Scene::Release()

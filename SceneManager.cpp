@@ -7,8 +7,6 @@ std::map<std::wstring, Scene*> SceneManager::mScenes;
 Scene* SceneManager::mActiveScene = nullptr;
 std::wstring SceneManager::mPendingSceneName;
 
-
-
 void SceneManager::Initialize()
 {
 	Time::Initialize();

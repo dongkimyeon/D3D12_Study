@@ -16,12 +16,11 @@ void Plane::Initialize(ComPtr<ID3D12Device> device)
 	
 	
 	vertices = {
-		{ -5.0f, 0.0f, -5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f }, // 좌하단
-		{ -5.0f, 0.0f,  5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f }, // 좌상단
-		{  5.0f, 0.0f,  5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f }, // 우상단
-		{  5.0f, 0.0f, -5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f }  // 우하단
+		{ -5.0f, 0.0f, -5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f },
+		{ -5.0f, 0.0f,  5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f },
+		{  5.0f, 0.0f,  5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f },
+		{  5.0f, 0.0f, -5.0f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f }
 	};
-
 
 	indices = {
 		0, 1, 2,
@@ -29,7 +28,6 @@ void Plane::Initialize(ComPtr<ID3D12Device> device)
 	};
 
 	CreateBuffersFromData(device);
-	BuildNormalBuffer(device);
 
 }
 

@@ -19,20 +19,17 @@ public:
 private:
 	std::vector<GameObject*> mGameObjects;
 
-	// AI 탱크 렌더러 (15인스턴스, 연분홍)
 	std::unique_ptr<TankBody>   mTankBodyRenderer;
 	std::unique_ptr<TankLid>    mTankLidRenderer;
 	std::unique_ptr<TankBarrel> mTankBarrelRenderer;
 	std::vector<std::unique_ptr<Tank>> mTanks;
 
-	// 플레이어 탱크 렌더러 (1인스턴스, 파스텔 블루)
 	std::unique_ptr<TankBody>   mPlayerBodyRenderer;
 	std::unique_ptr<TankLid>    mPlayerLidRenderer;
 	std::unique_ptr<TankBarrel> mPlayerBarrelRenderer;
 	std::unique_ptr<Tank>       mPlayerTank;
 
 	std::unique_ptr<Terrain>    mTerrain;
-
 
 	bool  mMouseRotating = false;
 	POINT mPrevMousePos  = {};

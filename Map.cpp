@@ -16,7 +16,6 @@ void Map::Initialize(ComPtr<ID3D12Device> device)
 
 	OBJLoader::LoadBinary("map.bin", vertices, indices);
 
-	// 각 삼각형의 면 노멀 계산
 	for (size_t i = 0; i + 2 < vertices.size(); i += 3)
 	{
 		OBJVertex& v0 = vertices[i];
@@ -36,7 +35,6 @@ void Map::Initialize(ComPtr<ID3D12Device> device)
 		v0.ny = v1.ny = v2.ny = ny;
 		v0.nz = v1.nz = v2.nz = nz;
 
-		// 노멀 방향에 따라 파스텔 색상 부여
 		float r = 0.6f + 0.4f * fabsf(nx);
 		float g = 0.6f + 0.4f * fabsf(ny);
 		float b = 0.6f + 0.4f * fabsf(nz);
@@ -56,7 +54,7 @@ void Map::AddInstance(XMFLOAT3 position, float yaw)
 	XMMATRIX world = XMMatrixRotationY(XMConvertToRadians(yaw))
 		* XMMatrixTranslation(position.x, position.y, position.z);
 	XMFLOAT4X4 w;
-	XMStoreFloat4x4(&w, world); // row-major 그대로, transpose 없음
+	XMStoreFloat4x4(&w, world);
 	mInstances.push_back(w);
 }
 

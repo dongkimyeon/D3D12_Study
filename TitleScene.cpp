@@ -20,7 +20,6 @@ void TitleScene::Initialize()
 	Camera::camPitch = 0.0f;
 	Camera::SetPosition(0, 0, -30.0f);
 
-
 	mTitleText1 = new LetterObj();
 	mTitleText1->Initialize(Framework::GetDevice(), "SM_Title1.obj");
 	mTitleText1->SetPosition(0, 5.0f, 0);	

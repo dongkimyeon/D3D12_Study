@@ -2,7 +2,6 @@
 #include <wincodec.h>
 #pragma comment(lib, "windowscodecs.lib")
 
-// heightMap.png를 그레이스케일로 로드하여 0~1 정규화된 높이값 반환
 static std::vector<float> LoadHeightmapPNG(const wchar_t* path, int& outW, int& outH)
 {
     outW = outH = 0;
@@ -72,7 +71,6 @@ void Terrain::Initialize(ComPtr<ID3D12Device> device)
 	mHmData = LoadHeightmapPNG(L"heightMap.png", mHmW, mHmH);
 	bool useHeightmap = !mHmData.empty();
 
-	// heightmap 없으면 랜덤 fallback
 	std::mt19937 rng(1234);
 	std::uniform_real_distribution<float> dist(MIN_Y, MAX_Y);
 
@@ -87,7 +85,7 @@ void Terrain::Initialize(ComPtr<ID3D12Device> device)
 			float py;
 			if (useHeightmap)
 			{
-				// bilinear sampling
+
 				float u  = (float)x / GRID_X * (mHmW - 1);
 				float v  = (float)z / GRID_Z * (mHmH - 1);
 				int   x0 = std::clamp((int)u, 0, mHmW - 1);
@@ -126,7 +124,6 @@ void Terrain::Initialize(ComPtr<ID3D12Device> device)
 		}
 	}
 
-	// 삼각형 노멀 누산 후 정규화
 	std::vector<XMFLOAT3> normAccum(vertices.size(), { 0.0f, 0.0f, 0.0f });
 	for (size_t i = 0; i < indices.size(); i += 3)
 	{
@@ -154,7 +151,6 @@ void Terrain::Initialize(ComPtr<ID3D12Device> device)
 	}
 
 	CreateBuffersFromData(device);
-	BuildNormalBuffer(device);
 }
 
 void Terrain::Update(float dt)
@@ -197,6 +193,5 @@ float Terrain::GetHeightAt(float wx, float wz) const
 	float h11 = mHmData[z1 * mHmW + x1];
 	float h = (h00*(1-tx) + h10*tx)*(1-tz) + (h01*(1-tx) + h11*tx)*tz;
 
-	// 로컬 Y → 월드 Y
 	return h * mMaxY * sc.y + pos.y;
 }

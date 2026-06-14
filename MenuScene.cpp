@@ -20,7 +20,6 @@ void MenuScene::Initialize()
 	Camera::camPitch = 0.0f;
 	Camera::SetPosition(0, -2.5f, -45.0f);
 
-
 	Tutorial = new LetterObj();
 	Tutorial->Initialize(Framework::GetDevice(), "SM_TUTORIAL.obj");
 	Tutorial->SetPosition(0, 10.0f, 0);
@@ -44,14 +43,12 @@ void MenuScene::Initialize()
 	End->Initialize(Framework::GetDevice(), "SM_END.obj");
 	End->SetPosition(0, -15.0f, 0);
 
-
 	mGameObjects.push_back(Tutorial);
 	mGameObjects.push_back(Level_1);
 	mGameObjects.push_back(Level_2);
 	mGameObjects.push_back(Level_3);
 	mGameObjects.push_back(Start);
 	mGameObjects.push_back(End);
-
 
 }
 

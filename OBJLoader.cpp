@@ -60,7 +60,6 @@ bool OBJLoader::Load(const std::string& filename,
         }
     }
 
-
     vertices.clear();
     indices.clear();
 
@@ -88,7 +87,6 @@ bool OBJLoader::Load(const std::string& filename,
         indices.push_back(static_cast<uint32_t>(i));
     }
 
-    // OBJ에 노멀 데이터가 없으면 삼각형마다 면 노멀을 계산
     if (normIndices.empty()) {
         for (size_t i = 0; i + 2 < vertices.size(); i += 3) {
             float ax = vertices[i + 1].x - vertices[i].x;
@@ -114,24 +112,20 @@ bool OBJLoader::Load(const std::string& filename,
 	PrintLog(LogColor::BLUE, "[OBJLoader] Loaded " + std::to_string(vertices.size()) + " vertices, " +
         std::to_string(indices.size() / 3) + " triangles");
 
-    // --- AABB 센터링 (바운딩박스 중심을 원점으로) ---
     if (!vertices.empty()) {
         float minX =  FLT_MAX, minY =  FLT_MAX, minZ =  FLT_MAX;
         float maxX = -FLT_MAX, maxY = -FLT_MAX, maxZ = -FLT_MAX;
 
-        // AABB 계산
         for (const auto& v : vertices) {
             if (v.x < minX) minX = v.x;  if (v.x > maxX) maxX = v.x;
             if (v.y < minY) minY = v.y;  if (v.y > maxY) maxY = v.y;
             if (v.z < minZ) minZ = v.z;  if (v.z > maxZ) maxZ = v.z;
         }
 
-        // 중심 계산
         float cx = (minX + maxX) * 0.5f;
         float cy = (minY + maxY) * 0.5f;
         float cz = (minZ + maxZ) * 0.5f;
 
-        // 모든 정점을 중심만큼 이동
         for (auto& v : vertices) {
             v.x -= cx;
             v.y -= cy;
@@ -141,7 +135,6 @@ bool OBJLoader::Load(const std::string& filename,
 
     return true;
 }
-
 
 bool OBJLoader::LoadBinary(const std::string& binPath,
     std::vector<OBJVertex>& vertices,

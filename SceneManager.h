@@ -18,7 +18,6 @@ public:
 		T* newScene = new T();
 		newScene->SetName(name);
 
-
 		mScenes.insert({ name, newScene });
 		return newScene;
 	}

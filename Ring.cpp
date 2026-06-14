@@ -6,10 +6,8 @@ void Ring::Initialize(ComPtr<ID3D12Device> device)
     GameObject::Initialize(device);
     LoadFromOBJ("Ring.OBJ", device);
 
-    // Ring.OBJ outer radius ~385 units -> scale to ~27 unit radius (54 diameter)
     BakeScale(0.07f, 0.07f, 0.07f);
 
-    // Recompute local AABB after bake
     if (!vertices.empty()) {
         XMFLOAT3 vmin = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
         XMFLOAT3 vmax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
@@ -23,7 +21,6 @@ void Ring::Initialize(ComPtr<ID3D12Device> device)
             { (vmax.x-vmin.x)*0.5f, (vmax.y-vmin.y)*0.5f, (vmax.z-vmin.z)*0.5f });
     }
 
-    // Gold color
     SetColor(1.0f, 0.84f, 0.0f);
 }
 

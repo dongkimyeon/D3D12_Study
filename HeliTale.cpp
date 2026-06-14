@@ -2,7 +2,7 @@
 
 HeliTale::HeliTale()
 {
-	rotationSpeed = XMConvertToRadians(360); // 초당 360도 회전
+	rotationSpeed = XMConvertToRadians(360);
 }
 
 HeliTale::~HeliTale()
@@ -21,7 +21,6 @@ void HeliTale::Update(float dt)
 {
 	GameObject::Update(dt);
 	 
-	//rotation.y += rotationSpeed * dt;
 
 }
 

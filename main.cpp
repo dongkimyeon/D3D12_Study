@@ -1,16 +1,12 @@
 #include "stdafx.h"
 #include "Framework.h"
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#define WINDOW_WIDTH 1280   
+#define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 extern bool debugMode = true;
 Framework* gFramework = nullptr;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-		return true;
-
 	switch (msg)
 	{
 	case WM_ENTERSIZEMOVE:
@@ -33,7 +29,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	case WM_SIZE:
 		if (gFramework && wparam != SIZE_MINIMIZED && !gFramework->IsResizing())
 		{
-			// 드래그 중이 아닐 때만 (전체화면 전환 등 프로그램적 변경)
+
 			int w = LOWORD(lparam);
 			int h = HIWORD(lparam);
 			if (w > 0 && h > 0)

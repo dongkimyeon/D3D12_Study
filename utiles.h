@@ -58,16 +58,14 @@ namespace Utiles
             return result;
         }
 
-		//내적
 		inline FLOAT Dot(const XMFLOAT3& a, const XMFLOAT3& b)
 		{
 			XMVECTOR dotVec = XMVector3Dot(XMLoadFloat3(&a), XMLoadFloat3(&b));
-			return XMVectorGetX(dotVec); // 결과값 하나만 추출
+			return XMVectorGetX(dotVec);
 		}
 
 		
 
-		// XMVECTOR를 XMFLOAT3로 바로 변환해주는 편의 함수
 		inline XMFLOAT3 FromVector(FXMVECTOR v)
 		{
 			XMFLOAT3 result;

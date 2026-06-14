@@ -6,7 +6,6 @@ bool  Input::mCursorLocked = false;
 HWND  Input::mLockedHwnd   = nullptr;
 POINT Input::mMouseDelta   = {};
 
-
 static bool lastF1State = false;
 
 int ASCII[(UINT)eKeyCode::End] =
@@ -115,7 +114,6 @@ void Input::updateKey(Input::Key& key)
         else
             updateKeyUp(key);
 
-
     }
     else
     {
@@ -147,8 +145,6 @@ void Input::updateKeyUp(Input::Key& key)
 
     key.bPressed = false;
 }
-
-
 
 void Input::clearKeys()
 {

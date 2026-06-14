@@ -2,9 +2,9 @@
 #include "stdafx.h"
 
 struct OBJVertex {
-    float x, y, z;       // 위치
-    float nx, ny, nz;    // 노멀
-    float r, g, b, a;    // 색상
+    float x, y, z;
+    float nx, ny, nz;
+    float r, g, b, a;
 };
 
 class OBJLoader {

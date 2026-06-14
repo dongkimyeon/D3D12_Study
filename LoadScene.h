@@ -5,7 +5,6 @@
 #include "TitleScene.h"
 #include "MenuScene.h"
 
-
 void LoadScenes()
 {
     SceneManager::CreateScene<Level_1_Scene>(L"Level_1");

@@ -8,7 +8,9 @@
       "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/amd64/MSBuild.exe\" \"C:/Github-repo/D3D12_Study\" /p:Configuration=Debug /p:Platform=x64 /t:Build /v:minimal)",
       "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/amd64/MSBuild.exe\" \"C:/Github-repo/D3D12_Study/D3D12_Study.vcxproj\" /p:Configuration=Debug /p:Platform=x64 /t:Build /v:minimal)",
       "Bash(powershell *)",
-      "Bash(msbuild Dx12_Study.sln /p:Configuration=Debug /p:Platform=x64 /t:Build /m /nologo)"
+      "Bash(msbuild Dx12_Study.sln /p:Configuration=Debug /p:Platform=x64 /t:Build /m /nologo)",
+      "Skill(update-config)",
+      "Bash(claude mcp *)"
     ]
   }
 }
